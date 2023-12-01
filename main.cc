@@ -107,9 +107,6 @@ static void constant32(int r[], uint32_t value)
 
 	for (unsigned int i = 0; i < 32; ++i) {
 		constant(r[i], (value >> i) & 1);
-
-		nr_clauses += 1;
-		nr_constraints += 1;
 	}
 }
 
