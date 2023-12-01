@@ -687,7 +687,7 @@ static void preimage()
 	for (unsigned int i = 0; i < 512; ++i)
 		message_bits[i] = i;
 
-	std::random_shuffle(message_bits.begin(), message_bits.end());
+	//std::random_shuffle(message_bits.begin(), message_bits.end());
 	for (unsigned int i = 0; i < config_nr_message_bits; ++i) {
 		unsigned int r = message_bits[i] / 32;
 		unsigned int s = message_bits[i] % 32;
@@ -702,7 +702,7 @@ static void preimage()
 	for (unsigned int i = 0; i < 160; ++i)
 		hash_bits[i] = i;
 
-	std::random_shuffle(hash_bits.begin(), hash_bits.end());
+	//std::random_shuffle(hash_bits.begin(), hash_bits.end());
 	for (unsigned int i = 0; i < config_nr_hash_bits; ++i) {
 		unsigned int r = hash_bits[i] / 32;
 		unsigned int s = hash_bits[i] % 32;
@@ -756,7 +756,7 @@ static void second_preimage()
 	for (unsigned int i = 0; i < 160; ++i)
 		hash_bits[i] = i;
 
-	std::random_shuffle(hash_bits.begin(), hash_bits.end());
+	//std::random_shuffle(hash_bits.begin(), hash_bits.end());
 	for (unsigned int i = 0; i < config_nr_hash_bits; ++i) {
 		unsigned int r = hash_bits[i] / 32;
 		unsigned int s = hash_bits[i] % 32;
@@ -797,7 +797,7 @@ static void collision()
 	for (unsigned int i = 0; i < 160; ++i)
 		hash_bits[i] = i;
 
-	std::random_shuffle(hash_bits.begin(), hash_bits.end());
+	//std::random_shuffle(hash_bits.begin(), hash_bits.end());
 	for (unsigned int i = 0; i < config_nr_hash_bits; ++i) {
 		unsigned int r = hash_bits[i] / 32;
 		unsigned int s = hash_bits[i] % 32;
