@@ -1,6 +1,7 @@
 /*
  * sha1-sat -- SAT instance generator for SHA-1
  * Copyright (C) 2011-2012, 2021  Vegard Nossum <vegard.nossum@gmail.com>
+ *               2023 Oleg Zaikin <oleg.zaikin@icc.ru>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
