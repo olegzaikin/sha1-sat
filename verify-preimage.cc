@@ -59,19 +59,38 @@ void sha1(unsigned int nr_rounds,
 int main(int argc, char *argv[])
 {
 	unsigned int nr_rounds;
-	scanf("%u", &nr_rounds);
+    printf("Enter the number of SHA-1 rounds.\n");
+	if (scanf("%u", &nr_rounds) != 1) {
+        printf("Number of rounds must be a single integer.\n");
+        exit(EXIT_FAILURE);
+    }
 
 	uint32_t w[80];
-	for (unsigned int i = 0; i < 16; ++i)
-		scanf("%08x", &w[i]);
+	for (unsigned int i = 0; i < 16; ++i) {
+        printf("Enter w[%u].\n", i);
+		if (scanf("%08x", &w[i]) != 1) {
+            printf("w[%u] must be a single uint32_t.\n", i);
+            exit(EXIT_FAILURE);
+        }
+    }
 
 	uint32_t H[5];
-	for (unsigned int i = 0; i < 5; ++i)
-		scanf("%08x", &H[i]);
+	for (unsigned int i = 0; i < 5; ++i) {
+        printf("Enter H[%u].\n", i);
+		if (scanf("%08x", &H[i]) != 1) {
+            printf("H[%u] must be a single uint32_t.\n", i);
+            exit(EXIT_FAILURE);
+        }
+    }
 
 	uint32_t h[5];
-	for (unsigned int i = 0; i < 5; ++i)
-		scanf("%08x", &h[i]);
+	for (unsigned int i = 0; i < 5; ++i) {
+        printf("Enter h[%u].\n", i);
+		if (scanf("%08x", &h[i]) != 1) {
+            printf("h[%u] must be a single uint32_t.\n", i);
+            exit(EXIT_FAILURE);
+        }
+    }
 
 	sha1(nr_rounds, H[0], H[1], H[2], H[3], H[4], w);
 

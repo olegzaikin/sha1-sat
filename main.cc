@@ -216,9 +216,9 @@ static void halfadder(const std::vector<int> &lhs, const std::vector<int> &rhs)
 					break;
 	
 				std::vector<int> c;
-				for (int i = 0; i < n + m; ++i) {
+				for (unsigned i = 0; i < n + m; ++i) {
 					if (buf[i] == '0')
-						c.push_back(-(i + 1));
+						c.push_back(-((int)i + 1));
 					else if (buf[i] == '1')
 						c.push_back(i + 1);
 				}
@@ -235,7 +235,7 @@ static void halfadder(const std::vector<int> &lhs, const std::vector<int> &rhs)
 			std::vector<int> real_clause;
 
 			for (int i: c) {
-				int j = abs(i) - 1;
+			  unsigned j = (unsigned)(abs(i) - 1);
 				int var = j < n ? lhs[j] : rhs[m - 1 - (j - n)];
 				real_clause.push_back(i < 0 ? -var : var);
 			}
