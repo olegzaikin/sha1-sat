@@ -44,6 +44,7 @@ extern "C" {
 
 /* Instance options */
 static std::string config_attack = "preimage";
+static std::string config_message_file = "";
 static unsigned int config_nr_rounds = 80;
 static unsigned int config_nr_message_bits = 0;
 static unsigned int config_nr_hash_bits = 160;
@@ -499,6 +500,8 @@ public:
 		comment("sha1");
 		comment(format("parameter nr_rounds = $", nr_rounds));
 
+		
+
 		for (unsigned int i = 0; i < 16; ++i)
 			new_vars(format("w$[$]", name, i), w[i], 32, !config_restrict_branching);
 
@@ -674,8 +677,28 @@ static void preimage()
 
 	/* Generate a known-valid (message, hash)-pair */
 	uint32_t w[80];
-	for (unsigned int i = 0; i < 16; ++i)
-		w[i] = lrand48();
+
+	if (config_message_file == "") {
+		for (unsigned int i = 0; i < 16; ++i)
+			w[i] = lrand48();
+	}
+	else {
+		std::ifstream mes_file(config_message_file);
+		std::string s;
+		unsigned i = 0;
+		comment("Message was read from file " + config_message_file);
+		comment("Message :");
+		while (getline(mes_file, s)) {
+			std::istringstream isstream(s);
+			uint32_t ui;
+			isstream >> ui;
+			w[i] = ui;
+			comment(format("w[$] = $", i, w[i]));
+			i++;
+			//std::cout << ui << std::endl;
+		}
+		assert(i == 16);
+	}
 
 	uint32_t h[5];
 	sha1_forward(config_nr_rounds, w, h);
@@ -825,6 +848,7 @@ int main(int argc, char *argv[])
 			("attack", value<std::string>(), "Attack type (preimage, second-preimage, collision)")
 			("rounds", value<unsigned int>(&config_nr_rounds), "Number of rounds (16-80)")
 			("message-bits", value<unsigned int>(&config_nr_message_bits), "Number of fixed message bits (0-512)")
+			("message-file", value<std::string>(), "File name with message")
 			("hash-bits", value<unsigned int>(&config_nr_hash_bits), "Number of fixed hash bits (0-160)")
 		;
 
@@ -875,9 +899,15 @@ int main(int argc, char *argv[])
 			std::cerr << "Can only specify --attack once\n";
 			return EXIT_FAILURE;
 		}
-
 		if (config_attack != "preimage" && config_attack != "second-preimage" && config_attack != "collision") {
 			std::cerr << "Invalid --attack\n";
+			return EXIT_FAILURE;
+		}
+
+		if (map.count("message-file") == 1) {
+			config_message_file = map["message-file"].as<std::string>();
+		} else if (map.count("message-file") > 1) {
+			std::cerr << "Can only specify --message-file once\n";
 			return EXIT_FAILURE;
 		}
 
