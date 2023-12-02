@@ -1,4 +1,5 @@
 main
 verify-preimage
 *.cnf
-random_message*
+random_message_*
+log_*
