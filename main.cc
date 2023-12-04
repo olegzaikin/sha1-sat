@@ -48,6 +48,8 @@ static std::string config_message_file = "";
 static unsigned int config_nr_rounds = 80;
 static unsigned int config_nr_message_bits = 0;
 static unsigned int config_nr_hash_bits = 160;
+static int config_hash_value = -1;
+static unsigned int config_equal_toM_bits = 32; // How many message bits are unknown on the last step:
 
 /* Format options */
 static bool config_cnf = false;
@@ -495,8 +497,10 @@ public:
 
 	int a[85][32];
 
-	sha1(unsigned int nr_rounds, std::string name)
+	sha1(unsigned int nr_rounds, std::string name, unsigned int equal_toM_bits = 32)
 	{
+		assert(equal_toM_bits >= 0 && equal_toM_bits <= 32);
+
 		comment("sha1");
 		comment(format("parameter nr_rounds = $", nr_rounds));
 
@@ -595,7 +599,27 @@ public:
 				xor3(f, b, c, d);
 			}
 
-			add5(format("a[$]", i + 5), a[i + 5], prev_a, f, e, k[i / 20], w[i]);
+			// Intermediate inversion problem if needed:
+                        if ((equal_toM_bits < 32) && (i == nr_rounds - 1)) {
+			    // 2bitM:
+			    // tempW = W[i] << 30;
+    			    // weakW = tempW >> 30;
+			    comment(format("$bitW", equal_toM_bits));
+			    int weakW[32];
+			    new_vars("weakW", weakW, 32);
+			    // Leftmost bits are constant 0s:
+			    for (unsigned j = 0; j < 32-equal_toM_bits; j++) {
+				constant(weakW[j], false);
+			    }
+			    // Remaining rightmost bits are equal to message:
+			    for (unsigned j = 32-equal_toM_bits; j < 32; j++) {
+				eq(&weakW[j], &w[i][j], 1);
+			    }
+			    add5(format("a[$]", i + 5), a[i + 5], prev_a, f, e, k[i / 20], weakW);
+			}
+			else {
+			    add5(format("a[$]", i + 5), a[i + 5], prev_a, f, e, k[i / 20], w[i]);
+			}
 		}
 
 		/* Rotate back */
@@ -673,7 +697,7 @@ static void sha1_forward(unsigned int nr_rounds, uint32_t w[80], uint32_t h_out[
 
 static void preimage()
 {
-	sha1 f(config_nr_rounds, "");
+	sha1 f(config_nr_rounds, "", config_equal_toM_bits);
 
 	/* Generate a known-valid (message, hash)-pair */
 	uint32_t w[80];
@@ -730,7 +754,15 @@ static void preimage()
 		unsigned int r = hash_bits[i] / 32;
 		unsigned int s = hash_bits[i] % 32;
 
-		constant(f.h_out[r][s], (h[r] >> s) & 1);
+		// If no hash value is give:
+		if (config_hash_value == -1) { 
+			constant(f.h_out[r][s], (h[r] >> s) & 1);
+		}
+		else {
+			// If config_hash_value == 0 (1), all hash bits are 0 (1):
+			assert(config_hash_value == 0 || config_hash_value == 1);
+			constant(f.h_out[r][s], (bool)config_hash_value);
+		}
 	}
 }
 
@@ -850,6 +882,8 @@ int main(int argc, char *argv[])
 			("message-bits", value<unsigned int>(&config_nr_message_bits), "Number of fixed message bits (0-512)")
 			("message-file", value<std::string>(), "File name with message")
 			("hash-bits", value<unsigned int>(&config_nr_hash_bits), "Number of fixed hash bits (0-160)")
+			("hash-value", value<int>(&config_hash_value), "Hash value (0 | 1)")
+			("equal-toM-bits", value<unsigned int>(&config_equal_toM_bits), "Number of unknown message bits on the last step (0-32)")
 		;
 
 		options_description format_options("Format options");

@@ -1,3 +1,8 @@
+./main --cnf --rounds=22 --hash-bits=160 --hash-value=0 --attack=preimage --seed=0 > sha1_preimage_22r_0hash.cnf
+./main --cnf --rounds=22 --hash-bits=160 --hash-value=1 --attack=preimage --seed=0 > sha1_preimage_22r_1hash.cnf
+./main --cnf --rounds=23 --hash-bits=160 --hash-value=0 --attack=preimage --seed=0 > sha1_preimage_23r_0hash.cnf
+./main --cnf --rounds=23 --hash-bits=160 --hash-value=1 --attack=preimage --seed=0 > sha1_preimage_23r_1hash.cnf
+
 for i in {0..7}
 do
     echo $i
