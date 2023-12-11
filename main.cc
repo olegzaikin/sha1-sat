@@ -1,7 +1,7 @@
-/*
+﻿/*
  * sha1-sat -- SAT instance generator for SHA-1
  * Copyright (C) 2011-2012, 2021  Vegard Nossum <vegard.nossum@gmail.com>
- *               2023 Oleg Zaikin <oleg.zaikin@icc.ru>
+ *               2023 Oleg Zaikin <zaikin.icc@gmailcom>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -41,6 +41,7 @@ extern "C" {
 
 #include "format.hh"
 
+std::string version = "1.0.2"; // The
 
 /* Instance options */
 static std::string config_attack = "preimage";
@@ -483,6 +484,31 @@ static void add5(std::string label, int r[32], int a[32], int b[32], int c[32], 
 	}
 }
 
+// Add-on: sum-4 for MD5:
+static void add4(std::string label, int r[32], int a[32], int b[32], int c[32], int d[32])
+{
+	comment("add4");
+
+	std::vector<int> addends[32 + 5];
+	for (unsigned int i = 0; i < 32; ++i) {
+		addends[i].push_back(a[i]);
+		addends[i].push_back(b[i]);
+		addends[i].push_back(c[i]);
+		addends[i].push_back(d[i]);
+
+		unsigned int m = floor(log2(addends[i].size()));
+		std::vector<int> rhs(1 + m);
+		rhs[0] = r[i];
+		new_vars(format("$_rhs[$]", label, i), &rhs[1], m);
+
+		for (unsigned int j = 1; j < 1 + m; ++j)
+			addends[i + j].push_back(rhs[j]);
+
+		halfadder(addends[i], rhs);
+	}
+}
+
+// Circular shift left:
 static void rotl(int r[32], int x[32], unsigned int n)
 {
 	for (unsigned int i = 0; i < 32; ++i)
@@ -547,25 +573,45 @@ public:
 		constant32(h_in[3], 0x10325476);
 		constant32(h_in[4], 0xc3d2e1f0);
 
+		// a[4] == a == h0:
 		rotl(a[4], h_in[0], 32 - 0);
+		// a[3] == b == h1:
 		rotl(a[3], h_in[1], 32 - 0);
+		// a[2] == c << 2 == h2 << 2:
 		rotl(a[2], h_in[2], 32 - 30);
+		// a[1] == d << 2 == h3 << 2:
 		rotl(a[1], h_in[3], 32 - 30);
+		// a[0] == r << 2 == h4 << 2:
 		rotl(a[0], h_in[4], 32 - 30);
 
 		for (unsigned int i = 0; i < nr_rounds; ++i) {
+			// prev_a = a leftrotate 5;
+			// if i == 0, prev_a = a[4] << 5 == a << 5;
+			// if i == 1, prev_a = a[5] << 5 == old-a << 5;
 			int prev_a[32];
 			rotl(prev_a, a[i + 4], 5);
 
+			// b == a[i + 3];
+			// if i == 0, b = a[3] == h1;
+			// if i == 1, b = a[4] == h0 == old-a;
 			int b[32];
 			rotl(b, a[i + 3], 0);
 
+			// c == a[i + 2] << 30;
+			// if i == 0, c = a[2] << 30 == (h2 << 2) << 30 == h2;
+			// if i == 1, c = a[3] << 30 == old-b << 30;
 			int c[32];
 			rotl(c, a[i + 2], 30);
 
+			// d == a[i + 1] << 30;
+			// if i == 0, d = a[1] << 30 == (h3 << 2) << 30 == h3;
+			// if i == 1, d = a[2] << 30 == (h2 << 2) << 30 == h2;
 			int d[32];
 			rotl(d, a[i + 1], 30);
 
+			// e == a[i + 0] << 30;
+			// if i == 0, e = a[0] << 30 == (h4 << 2) << 30 == h4;
+			// if i == 1, e = a[1] << 30 == (h3 << 2) << 30 == h3
 			int e[32];
 			rotl(e, a[i + 0], 30);
 
@@ -600,20 +646,20 @@ public:
 			}
 
 			// Intermediate inversion problem if needed:
-                        if ((equal_toM_bits < 32) && (i == nr_rounds - 1)) {
+            if ((equal_toM_bits < 32) && (i == nr_rounds - 1)) {
 			    // 2bitM:
 			    // tempW = W[i] << 30;
-    			    // weakW = tempW >> 30;
+    			// weakW = tempW >> 30;
 			    comment(format("$bitW", equal_toM_bits));
 			    int weakW[32];
 			    new_vars("weakW", weakW, 32);
 			    // Leftmost bits are constant 0s:
 			    for (unsigned j = 0; j < 32-equal_toM_bits; j++) {
-				constant(weakW[j], false);
+						constant(weakW[j], false);
 			    }
 			    // Remaining rightmost bits are equal to message:
 			    for (unsigned j = 32-equal_toM_bits; j < 32; j++) {
-				eq(&weakW[j], &w[i][j], 1);
+						eq(&weakW[j], &w[i][j], 1);
 			    }
 			    add5(format("a[$]", i + 5), a[i + 5], prev_a, f, e, k[i / 20], weakW);
 			}
@@ -694,6 +740,201 @@ static void sha1_forward(unsigned int nr_rounds, uint32_t w[80], uint32_t h_out[
 	h_out[3] = h3 + d;
 	h_out[4] = h4 + e;
 }
+
+// Add-on - a class for MD5 hash function:
+class md5 {
+public:
+	int M[16][32];
+	int h_in[4][32];
+	int h_out[4][32];
+	int internal_states[68][32]; // size == number of steps + 4
+
+	md5(unsigned int nr_rounds, std::string name)
+	{
+		unsigned Const[64] = {0xd76aa478, 0xe8c7b756, 0x242070db, 0xc1bdceee,
+	  	                    0xf57c0faf, 0x4787c62a, 0xa8304613, 0xfd469501,
+	                        0x698098d8, 0x8b44f7af, 0xffff5bb1, 0x895cd7be,
+					                0x6b901122, 0xfd987193, 0xa679438e, 0x49b40821,
+					                0xf61e2562, 0xc040b340, 0x265e5a51, 0xe9b6c7aa,
+					                0xd62f105d, 0x02441453, 0xd8a1e681, 0xe7d3fbc8,
+					                0x21e1cde6, 0xc33707d6, 0xf4d50d87, 0x455a14ed,
+					                0xa9e3e905, 0xfcefa3f8, 0x676f02d9, 0x8d2a4c8a,
+					                0xfffa3942, 0x8771f681, 0x6d9d6122, 0xfde5380c,
+					                0xa4beea44, 0x4bdecfa9, 0xf6bb4b60, 0xbebfbc70,
+					                0x289b7ec6, 0xeaa127fa, 0xd4ef3085, 0x04881d05,
+					                0xd9d4d039, 0xe6db99e5, 0x1fa27cf8, 0xc4ac5665,
+					                0xf4292244, 0x432aff97, 0xab9423a7, 0xfc93a039,
+					                0x655b59c3, 0x8f0ccc92, 0xffeff47d, 0x85845dd1,
+					                0x6fa87e4f, 0xfe2ce6e0, 0xa3014314, 0x4e0811a1,
+					                0xf7537e82, 0xbd3af235, 0x2ad7d2bb, 0xeb86d391};
+
+		int Shifts[64]{ 7, 12, 17, 22,  7, 12, 17, 22,  7, 12, 17, 22,  7, 12, 17, 22,
+						        5,  9, 14, 20,  5,  9, 14, 20,  5,  9, 14, 20,  5,  9, 14, 20,
+						        4, 11, 16, 23,  4, 11, 16, 23,  4, 11, 16, 23,  4, 11, 16, 23,
+						        6, 10, 15, 21,  6, 10, 15, 21,  6, 10, 15, 21,  6, 10, 15, 21 };
+
+		comment("md5");
+		comment(format("parameter nr_rounds = $", nr_rounds));
+
+		for (unsigned int i = 0; i < 16; ++i)
+			new_vars(format("M$[$]", name, i), M[i], 32, !config_restrict_branching);
+
+		new_vars(format("h$_in0", name), h_in[0], 32);
+		new_vars(format("h$_in1", name), h_in[1], 32);
+		new_vars(format("h$_in2", name), h_in[2], 32);
+		new_vars(format("h$_in3", name), h_in[3], 32);
+
+		new_vars(format("h$_out0", name), h_out[0], 32);
+		new_vars(format("h$_out1", name), h_out[1], 32);
+		new_vars(format("h$_out2", name), h_out[2], 32);
+		new_vars(format("h$_out3", name), h_out[3], 32);
+
+		// New variables only starting from index 4 because 0..3 are equal to h_in:
+		for (unsigned int i = 0; i < nr_rounds; ++i) {
+			new_vars(format("internal_states[$]", i + 4), internal_states[i + 4], 32);
+		}
+
+		/* Fix constants */
+
+		int k[64][32];
+		for (unsigned i = 0; i < nr_rounds; ++i) {
+			new_constant(format("k[$]", i), k[i], Const[i]);
+		}
+
+		constant32(h_in[0], 0x67452301);
+		constant32(h_in[1], 0xEFCDAB89);
+		constant32(h_in[2], 0x98BADCFE);
+		constant32(h_in[3], 0x10325476);
+
+		for (int j = 0; j < 32; j++) {
+			internal_states[0][j] = h_in[0][j];
+			internal_states[1][j] = h_in[1][j];
+			internal_states[2][j] = h_in[2][j];
+			internal_states[3][j] = h_in[3][j];
+		}
+		unsigned a_intern_index = 0;
+		unsigned b_intern_index = 1;
+		unsigned c_intern_index = 2;
+		unsigned d_intern_index = 3;
+
+		int M_index = -1;
+		for (unsigned i = 0; i < nr_rounds; ++i) {
+			int a[32];
+			int b[32];
+			int c[32];
+			int d[32];
+			// if i == 0:
+				//          0 1 2 3
+				//	intern: a b c d
+				//	reg:    a b c d
+			// if i == 1:
+				//          0 1    2 3 4
+				//	intern: a b    c d new1
+				//	reg:    d new1 b c
+				//	        3 4    1 2
+			// if i == 2:
+				//          0 1    2    3 4    5
+				//  intern: a b    c    d new1 new2
+				//  reg:    c new2 new1 b
+				//          2 5    4    1
+				// i == 3:
+				//  1 6 5 4
+				// i == 4:
+				//  4 7 6 5
+			assert(a_intern_index < i + 4); // i + 3 is the last index
+			assert(b_intern_index < i + 4);
+			assert(c_intern_index < i + 4);
+			assert(d_intern_index < i + 4);
+			assert(a_intern_index != b_intern_index);
+			assert(a_intern_index != c_intern_index);
+			assert(a_intern_index != d_intern_index);
+			assert(b_intern_index != c_intern_index);
+			assert(b_intern_index != d_intern_index);
+			assert(c_intern_index != d_intern_index);
+			for (unsigned j = 0; j < 32; j++) {
+				a[j] = internal_states[a_intern_index][j];
+				b[j] = internal_states[b_intern_index][j];
+				c[j] = internal_states[c_intern_index][j];
+				d[j] = internal_states[d_intern_index][j];
+			}
+			
+			int f[32];
+			new_vars(format("f[$]", i), f, 32);
+
+			if (i >= 0 && i < 16) {
+				M_index = i;
+				// Bitwise if for (B,C,D): F = (B and C) or ((not B) and D)
+				for (unsigned j = 0; j < 32; ++j) {
+					clause(-f[j], -b[j], c[j]);
+					clause(-f[j], b[j], d[j]);
+					clause(-f[j], c[j], d[j]);
+
+					clause(f[j], -b[j], -c[j]);
+					clause(f[j], b[j], -d[j]);
+					clause(f[j], -c[j], -d[j]);
+				}
+			}
+			else if (i >= 16 && i < 32) {
+				M_index = (5*i + 1) % 16;
+				// Bitwise if for (D,B,C): F = (D and B) or ((not D) and C)
+				for (unsigned j = 0; j < 32; ++j) {
+					clause(-f[j], -d[j], b[j]);
+					clause(-f[j], d[j], c[j]);
+					clause(-f[j], b[j], c[j]);
+
+					clause(f[j], -d[j], -b[j]);
+					clause(f[j], d[j], -c[j]);
+					clause(f[j], -b[j], -c[j]);
+				}
+			} 
+			else if (i >= 32 && i < 48) {
+				M_index = (3*i + 5) % 16;
+				// F(B,C,D) = B xor C xor D: 
+				xor3(f, b, c, d);
+			}
+			else if (i >= 48 && i < 64) {
+				M_index = (7*i) % 16;
+				// Func(B,C,D) = C xor (not D or B):
+				for (unsigned j = 0; j < 32; ++j) {
+					clause(f[j], b[j], c[j], d[j]);
+					clause(f[j], b[j], -c[j], -d[j]);
+					clause(f[j], -b[j], c[j], d[j]);
+					clause(f[j], -b[j], c[j], -d[j]);
+					clause(-f[j], b[j], c[j], -d[j]);
+					clause(-f[j], b[j], -c[j], d[j]);
+					clause(-f[j], -b[j], -c[j], d[j]);
+					clause(-f[j], -b[j], -c[j], -d[j]);
+				}
+			}
+
+			// a = b + ((a + F(b,c,d) + M[g] + K[i]) <<< s)
+			int temp1[32];
+			// temp1 = a + F(b,c,d) + M[g] + K[i]
+			add4(format("add4 on i==$", i), temp1, a, f, M[M_index], k[i]);
+			int temp2[32];
+			rotl(temp2, temp1, Shifts[i]);
+
+			// new internal state to update b:
+			assert(i + 4 < 68);
+			add2(format("add2 on i==$", i), internal_states[i + 4], b, temp2);
+			// update indicies:
+			a_intern_index = d_intern_index;
+			d_intern_index = c_intern_index;
+			c_intern_index = b_intern_index;
+			b_intern_index = i + 4;
+		}
+
+		// A = A + AA
+		// B = B + BB
+		// C = C + CC
+		// D = D + DD
+		add2("h_out", h_out[0], h_in[0], internal_states[0]);
+		add2("h_out", h_out[1], h_in[1], internal_states[1]);
+		add2("h_out", h_out[2], h_in[2], internal_states[2]);
+		add2("h_out", h_out[3], h_in[3], internal_states[3]);
+	}
+
+};
 
 static void preimage()
 {
