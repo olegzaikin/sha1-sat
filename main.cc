@@ -51,6 +51,7 @@ static unsigned int config_nr_message_bits = 0;
 static unsigned int config_nr_hash_bits = 160;
 static int config_hash_value = -1;
 static unsigned int config_equal_toM_bits = 32; // How many message bits are unknown on the last step:
+static std::string config_hash_function = "sha1"; // sha1 or md5
 
 /* Format options */
 static bool config_cnf = false;
@@ -194,6 +195,8 @@ static void halfadder(const std::vector<int> &lhs, const std::vector<int> &rhs)
 
 		unsigned int n = lhs.size();
 		unsigned int m = rhs.size();
+		//std::cout << "n : " << n << std::endl;
+		//std::cout << "m : " << m << std::endl;
 
 		std::vector<std::vector<int>> clauses;
 		auto it = cache.find(std::make_pair(n, m));
@@ -501,8 +504,9 @@ static void add4(std::string label, int r[32], int a[32], int b[32], int c[32], 
 		rhs[0] = r[i];
 		new_vars(format("$_rhs[$]", label, i), &rhs[1], m);
 
-		for (unsigned int j = 1; j < 1 + m; ++j)
+		for (unsigned int j = 1; j < 1 + m; ++j) {
 			addends[i + j].push_back(rhs[j]);
+		}
 
 		halfadder(addends[i], rhs);
 	}
@@ -537,8 +541,9 @@ public:
 
 		/* XXX: Fix this later by writing directly to w[i] */
 		int wt[80][32];
-		for (unsigned int i = 16; i < nr_rounds; ++i)
+		for (unsigned int i = 16; i < nr_rounds; ++i) {
 			new_vars(format("w$[$]", name, i), wt[i], 32);
+		}
 
 		new_vars(format("h$_in0", name), h_in[0], 32);
 		new_vars(format("h$_in1", name), h_in[1], 32);
@@ -552,8 +557,9 @@ public:
 		new_vars(format("h$_out3", name), h_out[3], 32);
 		new_vars(format("h$_out4", name), h_out[4], 32);
 
-		for (unsigned int i = 0; i < nr_rounds; ++i)
+		for (unsigned int i = 0; i < nr_rounds; ++i) {
 			new_vars(format("a[$]", i + 5), a[i + 5], 32);
+		}
 
 		for (unsigned int i = 16; i < nr_rounds; ++i) {
 			xor4(wt[i], w[i - 3], w[i - 8], w[i - 14], w[i - 16]);
@@ -749,7 +755,7 @@ public:
 	int h_out[4][32];
 	int internal_states[68][32]; // size == number of steps + 4
 
-	md5(unsigned int nr_rounds, std::string name)
+	md5(unsigned int nr_rounds)
 	{
 		unsigned Const[64] = {0xd76aa478, 0xe8c7b756, 0x242070db, 0xc1bdceee,
 	  	                    0xf57c0faf, 0x4787c62a, 0xa8304613, 0xfd469501,
@@ -777,17 +783,17 @@ public:
 		comment(format("parameter nr_rounds = $", nr_rounds));
 
 		for (unsigned int i = 0; i < 16; ++i)
-			new_vars(format("M$[$]", name, i), M[i], 32, !config_restrict_branching);
+			new_vars(format("M[$]", i), M[i], 32, !config_restrict_branching);
 
-		new_vars(format("h$_in0", name), h_in[0], 32);
-		new_vars(format("h$_in1", name), h_in[1], 32);
-		new_vars(format("h$_in2", name), h_in[2], 32);
-		new_vars(format("h$_in3", name), h_in[3], 32);
+		new_vars("h_in0", h_in[0], 32);
+		new_vars("h_in1", h_in[1], 32);
+		new_vars("h_in2", h_in[2], 32);
+		new_vars("h_in3", h_in[3], 32);
 
-		new_vars(format("h$_out0", name), h_out[0], 32);
-		new_vars(format("h$_out1", name), h_out[1], 32);
-		new_vars(format("h$_out2", name), h_out[2], 32);
-		new_vars(format("h$_out3", name), h_out[3], 32);
+		new_vars("h_out0", h_out[0], 32);
+		new_vars("h_out1", h_out[1], 32);
+		new_vars("h_out2", h_out[2], 32);
+		new_vars("h_out3", h_out[3], 32);
 
 		// New variables only starting from index 4 because 0..3 are equal to h_in:
 		for (unsigned int i = 0; i < nr_rounds; ++i) {
@@ -909,14 +915,18 @@ public:
 
 			// a = b + ((a + F(b,c,d) + M[g] + K[i]) <<< s)
 			int temp1[32];
+			new_vars(format("temp1 on i==$", i), temp1, 32);
 			// temp1 = a + F(b,c,d) + M[g] + K[i]
 			add4(format("add4 on i==$", i), temp1, a, f, M[M_index], k[i]);
 			int temp2[32];
+			new_vars(format("temp2 on i==$", i), temp2, 32);
 			rotl(temp2, temp1, Shifts[i]);
-
 			// new internal state to update b:
 			assert(i + 4 < 68);
 			add2(format("add2 on i==$", i), internal_states[i + 4], b, temp2);
+			
+			//add2(format("add2 on i==$", i), internal_states[i + 4], M[M_index], b);
+ 
 			// update indicies:
 			a_intern_index = d_intern_index;
 			d_intern_index = c_intern_index;
@@ -924,19 +934,113 @@ public:
 			b_intern_index = i + 4;
 		}
 
+		int a[32];
+		int b[32];
+		int c[32];
+		int d[32];
+		for (unsigned j = 0; j < 32; j++) {
+			a[j] = internal_states[a_intern_index][j];
+			b[j] = internal_states[b_intern_index][j];
+			c[j] = internal_states[c_intern_index][j];
+			d[j] = internal_states[d_intern_index][j];
+		}
+
 		// A = A + AA
 		// B = B + BB
 		// C = C + CC
 		// D = D + DD
-		add2("h_out", h_out[0], h_in[0], internal_states[0]);
-		add2("h_out", h_out[1], h_in[1], internal_states[1]);
-		add2("h_out", h_out[2], h_in[2], internal_states[2]);
-		add2("h_out", h_out[3], h_in[3], internal_states[3]);
+		add2("h_out", h_out[0], a, h_in[0]);
+		add2("h_out", h_out[1], b, h_in[1]);
+		add2("h_out", h_out[2], c, h_in[2]);
+		add2("h_out", h_out[3], d, h_in[3]);
 	}
 
 };
 
-static void preimage()
+// MD5
+static void preimage_md5()
+{
+	//md5 f(config_nr_rounds, "", config_equal_toM_bits);
+	md5 f(config_nr_rounds);
+
+	/* Generate a known-valid (message, hash)-pair */
+	uint32_t M[16];
+
+	if (config_message_file == "") {
+		for (unsigned int i = 0; i < 16; ++i)
+			M[i] = lrand48();
+	}
+	else {
+		std::ifstream mes_file(config_message_file);
+		std::string s;
+		unsigned i = 0;
+		comment("Message was read from file " + config_message_file);
+		comment("Message :");
+		while (getline(mes_file, s)) {
+			std::istringstream isstream(s);
+			uint32_t ui;
+			isstream >> ui;
+			M[i] = ui;
+			comment(format("M[$] = $", i, M[i]));
+			i++;
+			//std::cout << ui << std::endl;
+		}
+		assert(i == 16);
+	}
+
+	uint32_t h[4];
+	// todo
+	//md5_forward(config_nr_rounds, M, h);
+
+	/* Fix message bits */
+	comment(format("Fix $ message bits", config_nr_message_bits));
+
+	std::vector<unsigned int> message_bits(512);
+	for (unsigned int i = 0; i < 512; ++i)
+		message_bits[i] = i;
+
+	//std::random_shuffle(message_bits.begin(), message_bits.end());
+	for (unsigned int i = 0; i < config_nr_message_bits; ++i) {
+		unsigned int r = message_bits[i] / 32; // max(r) == 15
+		unsigned int s = message_bits[i] % 32; // max(s) == 31
+
+		constant(f.M[r][s], (M[r] >> s) & 1);
+	}
+
+	// Fix hash bits
+	if (config_nr_hash_bits > 128) {
+		config_nr_hash_bits = 128;
+	}
+  if (config_nr_rounds > 64) {
+		config_nr_rounds = 64;
+	}
+
+	comment(format("Fix $ hash bits", config_nr_hash_bits));
+	std::vector<unsigned int> hash_bits(128);
+	for (unsigned int i = 0; i < 128; ++i) {
+		hash_bits[i] = i;
+	}
+
+	// std::random_shuffle(hash_bits.begin(), hash_bits.end());
+	for (unsigned i = 0; i < config_nr_hash_bits; ++i) {
+		unsigned r = hash_bits[i] / 32;
+		unsigned s = hash_bits[i] % 32;
+		assert(r < 4);
+		assert(s < 32);
+		// If no hash value is given:
+		if (config_hash_value == -1) { 
+			constant(f.h_out[r][s], (h[r] >> s) & 1);
+		}
+		else {
+			// If config_hash_value == 0 (1), all hash bits are 0 (1):
+			assert(config_hash_value == 0 || config_hash_value == 1);
+			constant(f.h_out[r][s], (bool)config_hash_value);
+		}
+	}
+}
+
+// SHA-1
+static void preimage_sha1()
 {
 	sha1 f(config_nr_rounds, "", config_equal_toM_bits);
 
@@ -1009,7 +1113,7 @@ static void preimage()
 
 /* The second preimage differs from the first preimage by flipping one of
  * the message bits. */
-static void second_preimage()
+static void second_preimage_sha1()
 {
 	sha1 f(config_nr_rounds, "");
 
@@ -1061,7 +1165,7 @@ static void second_preimage()
 	}
 }
 
-static void collision()
+static void collision_sha1()
 {
 	sha1 f(config_nr_rounds, "0");
 	sha1 g(config_nr_rounds, "1");
@@ -1125,6 +1229,7 @@ int main(int argc, char *argv[])
 			("hash-bits", value<unsigned int>(&config_nr_hash_bits), "Number of fixed hash bits (0-160)")
 			("hash-value", value<int>(&config_hash_value), "Hash value (0 | 1)")
 			("equal-toM-bits", value<unsigned int>(&config_equal_toM_bits), "Number of unknown message bits on the last step (0-32)")
+			("hash-function", value<std::string>(), "Hash function (sha1 | md5)")
 		;
 
 		options_description format_options("Format options");
@@ -1183,6 +1288,18 @@ int main(int argc, char *argv[])
 			config_message_file = map["message-file"].as<std::string>();
 		} else if (map.count("message-file") > 1) {
 			std::cerr << "Can only specify --message-file once\n";
+			return EXIT_FAILURE;
+		}
+
+		if (map.count("hash-function") == 1) {
+			config_hash_function = map["hash-function"].as<std::string>();
+		} else if (map.count("hash-function") > 1) {
+			std::cerr << "Can only specify --hash-function once\n";
+			return EXIT_FAILURE;
+		}
+
+		if (config_hash_function != "sha1" && config_hash_function != "md5") {
+			std::cerr << "Invalid --hash-function\n";
 			return EXIT_FAILURE;
 		}
 
@@ -1253,11 +1370,16 @@ int main(int argc, char *argv[])
 	srand48(rand());
 
 	if (config_attack == "preimage") {
-		preimage();
+		if (config_hash_function == "sha1") {
+			preimage_sha1();
+		}
+		else {
+			preimage_md5();
+		}
 	} else if (config_attack == "second-preimage") {
-		second_preimage();
+		second_preimage_sha1();
 	} else if (config_attack == "collision") {
-		collision();
+		collision_sha1();
 	}	
 
 	if (config_cnf) {
