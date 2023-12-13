@@ -10,6 +10,7 @@ max_value = pow(2,32) - 1
 
 #print('Max 32-bit word value : ' + str(max_value))
 
+random.seed(0)
 for i in range(message_num):
   #print('message ' + str(i) + ':')
   s = ''

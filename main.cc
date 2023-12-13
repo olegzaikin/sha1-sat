@@ -41,7 +41,7 @@ extern "C" {
 
 #include "format.hh"
 
-std::string version = "1.0.3";
+std::string version = "1.0.4";
 
 /* Instance options */
 static std::string config_attack = "preimage";
@@ -69,16 +69,38 @@ static bool config_use_compact_adders = false;
 static std::ostringstream cnf;
 static std::ostringstream opb;
 
+static int nr_variables = 0;
+static unsigned int nr_clauses = 0;
+static unsigned int nr_xor_clauses = 0;
+static unsigned int nr_constraints = 0;
+
+unsigned MD5_const[64] = {0xd76aa478, 0xe8c7b756, 0x242070db, 0xc1bdceee,
+													0xf57c0faf, 0x4787c62a, 0xa8304613, 0xfd469501,
+													0x698098d8, 0x8b44f7af, 0xffff5bb1, 0x895cd7be,
+													0x6b901122, 0xfd987193, 0xa679438e, 0x49b40821,
+													0xf61e2562, 0xc040b340, 0x265e5a51, 0xe9b6c7aa,
+													0xd62f105d, 0x02441453, 0xd8a1e681, 0xe7d3fbc8,
+													0x21e1cde6, 0xc33707d6, 0xf4d50d87, 0x455a14ed,
+													0xa9e3e905, 0xfcefa3f8, 0x676f02d9, 0x8d2a4c8a,
+													0xfffa3942, 0x8771f681, 0x6d9d6122, 0xfde5380c,
+													0xa4beea44, 0x4bdecfa9, 0xf6bb4b60, 0xbebfbc70,
+													0x289b7ec6, 0xeaa127fa, 0xd4ef3085, 0x04881d05,
+													0xd9d4d039, 0xe6db99e5, 0x1fa27cf8, 0xc4ac5665,
+													0xf4292244, 0x432aff97, 0xab9423a7, 0xfc93a039,
+													0x655b59c3, 0x8f0ccc92, 0xffeff47d, 0x85845dd1,
+													0x6fa87e4f, 0xfe2ce6e0, 0xa3014314, 0x4e0811a1,
+													0xf7537e82, 0xbd3af235, 0x2ad7d2bb, 0xeb86d391};
+
+int MD5_shifts[64]{ 7, 12, 17, 22,  7, 12, 17, 22,  7, 12, 17, 22,  7, 12, 17, 22,
+										5,  9, 14, 20,  5,  9, 14, 20,  5,  9, 14, 20,  5,  9, 14, 20,
+										4, 11, 16, 23,  4, 11, 16, 23,  4, 11, 16, 23,  4, 11, 16, 23,
+										6, 10, 15, 21,  6, 10, 15, 21,  6, 10, 15, 21,  6, 10, 15, 21 };
+
 static void comment(std::string str)
 {
 	cnf << format("c $\n", str);
 	opb << format("* $\n", str);
 }
-
-static int nr_variables = 0;
-static unsigned int nr_clauses = 0;
-static unsigned int nr_xor_clauses = 0;
-static unsigned int nr_constraints = 0;
 
 static void new_vars(std::string label, int x[], unsigned int n, bool decision_var = true)
 {
@@ -527,14 +549,12 @@ public:
 
 	int a[85][32];
 
-	sha1(unsigned int nr_rounds, std::string name, unsigned int equal_toM_bits = 32)
+	sha1(unsigned int nr_rounds, std::string name, unsigned equal_toM_bits = 32)
 	{
 		assert(equal_toM_bits >= 0 && equal_toM_bits <= 32);
 
 		comment("sha1");
 		comment(format("parameter nr_rounds = $", nr_rounds));
-
-		
 
 		for (unsigned int i = 0; i < 16; ++i)
 			new_vars(format("w$[$]", name, i), w[i], 32, !config_restrict_branching);
@@ -652,7 +672,7 @@ public:
 			}
 
 			// Intermediate inversion problem if needed:
-            if ((equal_toM_bits < 32) && (i == nr_rounds - 1)) {
+      if ((equal_toM_bits < 32) && (i == nr_rounds - 1)) {
 			    // 2bitM:
 			    // tempW = W[i] << 30;
     			// weakW = tempW >> 30;
@@ -747,6 +767,55 @@ static void sha1_forward(unsigned int nr_rounds, uint32_t w[80], uint32_t h_out[
 	h_out[4] = h4 + e;
 }
 
+static void md5_forward(unsigned int nr_rounds, uint32_t M[16], uint32_t h_out[4])
+{
+	uint32_t h0 = 0x67452301;
+	uint32_t h1 = 0xEFCDAB89;
+	uint32_t h2 = 0x98BADCFE;
+	uint32_t h3 = 0x10325476;
+
+	uint32_t a = h0;
+	uint32_t b = h1;
+	uint32_t c = h2;
+	uint32_t d = h3;
+
+	unsigned M_index = -1;
+	for (unsigned i = 0; i < nr_rounds; ++i) {
+			uint32_t f;
+			if (i >= 0 && i < 16) {
+				M_index = i;
+				// F = (B and C) or ((not B) and D)
+				f = (b & c) | (~b & d);
+			} else if (i >= 16 && i < 32) {
+				M_index = (5*i + 1) % 16;
+				// F = (D and B) or ((not D) and C)
+				f = (d & b) | (~d & c);
+			} else if (i >= 32 && i < 48) {
+				M_index = (3*i + 5) % 16;
+				// F(B,C,D) = B xor C xor D: 
+				f = b ^ c ^ d;
+			} else if (i >= 48 && i < 64) {
+				M_index = (7*i) % 16;
+				// Func(B,C,D) = C xor (not D or B):
+				f = c ^ (~d | b);
+			}
+
+			// a = b + ((a + F(b,c,d) + M[g] + K[i]) <<< s)
+			uint32_t new_val = a + f + M[M_index] + MD5_const[i];
+			new_val = b + rotl(new_val, MD5_shifts[i]);
+ 
+			a = d;
+			d = c;
+			c = b;
+			b = new_val;
+	}
+
+	h_out[0] = h0 + a;
+	h_out[1] = h1 + b;
+	h_out[2] = h2 + c;
+	h_out[3] = h3 + d;
+}
+
 // Add-on - a class for MD5 hash function:
 class md5 {
 public:
@@ -755,30 +824,8 @@ public:
 	int h_out[4][32];
 	int internal_states[68][32]; // size == number of steps + 4
 
-	md5(unsigned int nr_rounds)
+	md5(unsigned int nr_rounds, unsigned equal_toM_bits = 32)
 	{
-		unsigned Const[64] = {0xd76aa478, 0xe8c7b756, 0x242070db, 0xc1bdceee,
-	  	                    0xf57c0faf, 0x4787c62a, 0xa8304613, 0xfd469501,
-	                        0x698098d8, 0x8b44f7af, 0xffff5bb1, 0x895cd7be,
-					                0x6b901122, 0xfd987193, 0xa679438e, 0x49b40821,
-					                0xf61e2562, 0xc040b340, 0x265e5a51, 0xe9b6c7aa,
-					                0xd62f105d, 0x02441453, 0xd8a1e681, 0xe7d3fbc8,
-					                0x21e1cde6, 0xc33707d6, 0xf4d50d87, 0x455a14ed,
-					                0xa9e3e905, 0xfcefa3f8, 0x676f02d9, 0x8d2a4c8a,
-					                0xfffa3942, 0x8771f681, 0x6d9d6122, 0xfde5380c,
-					                0xa4beea44, 0x4bdecfa9, 0xf6bb4b60, 0xbebfbc70,
-					                0x289b7ec6, 0xeaa127fa, 0xd4ef3085, 0x04881d05,
-					                0xd9d4d039, 0xe6db99e5, 0x1fa27cf8, 0xc4ac5665,
-					                0xf4292244, 0x432aff97, 0xab9423a7, 0xfc93a039,
-					                0x655b59c3, 0x8f0ccc92, 0xffeff47d, 0x85845dd1,
-					                0x6fa87e4f, 0xfe2ce6e0, 0xa3014314, 0x4e0811a1,
-					                0xf7537e82, 0xbd3af235, 0x2ad7d2bb, 0xeb86d391};
-
-		int Shifts[64]{ 7, 12, 17, 22,  7, 12, 17, 22,  7, 12, 17, 22,  7, 12, 17, 22,
-						        5,  9, 14, 20,  5,  9, 14, 20,  5,  9, 14, 20,  5,  9, 14, 20,
-						        4, 11, 16, 23,  4, 11, 16, 23,  4, 11, 16, 23,  4, 11, 16, 23,
-						        6, 10, 15, 21,  6, 10, 15, 21,  6, 10, 15, 21,  6, 10, 15, 21 };
-
 		comment("md5");
 		comment(format("parameter nr_rounds = $", nr_rounds));
 
@@ -804,7 +851,7 @@ public:
 
 		int k[64][32];
 		for (unsigned i = 0; i < nr_rounds; ++i) {
-			new_constant(format("k[$]", i), k[i], (int)Const[i]);
+			new_constant(format("k[$]", i), k[i], (int)MD5_const[i]);
 		}
 
 		constant32(h_in[0], 0x67452301);
@@ -917,10 +964,31 @@ public:
 			int temp1[32];
 			new_vars(format("temp1 on i==$", i), temp1, 32);
 			// temp1 = a + F(b,c,d) + M[g] + K[i]
-			add4(format("add4 on i==$", i), temp1, a, f, M[M_index], k[i]);
+			// Intermediate inversion problem if needed:
+      if ((equal_toM_bits < 32) && (i == nr_rounds - 1)) {
+			    // 2bitM:
+			    // tempW = W[i] << 30;
+    			// weakW = tempW >> 30;
+			    comment(format("$bitM", equal_toM_bits));
+			    int weakM[32];
+			    new_vars("weakM", weakM, 32);
+			    // Leftmost bits are constant 0s:
+			    for (unsigned j = 0; j < 32-equal_toM_bits; j++) {
+						constant(weakM[j], false);
+			    }
+			    // Remaining rightmost bits are equal to message:
+			    for (unsigned j = 32-equal_toM_bits; j < 32; j++) {
+						eq(&weakM[j], &M[M_index][j], 1);
+			    }
+					add4(format("add4 on i==$", i), temp1, a, f, weakM, k[i]);
+			}
+			else {
+					// standard call:
+			    add4(format("add4 on i==$", i), temp1, a, f, M[M_index], k[i]);
+			}
 			int temp2[32];
 			new_vars(format("temp2 on i==$", i), temp2, 32);
-			rotl(temp2, temp1, Shifts[i]);
+			rotl(temp2, temp1, MD5_shifts[i]);
 			// new internal state to update b:
 			assert(i + 4 < 68);
 			add2(format("add2 on i==$", i), internal_states[i + 4], b, temp2);
@@ -957,11 +1025,15 @@ public:
 
 };
 
-// MD5
+// Find an MD5's preimage:
 static void preimage_md5()
 {
+	if (config_nr_rounds > 64) {
+		config_nr_rounds = 64;
+		comment(format("nr_rounds was changed to $", config_nr_rounds));
+	}
 	//md5 f(config_nr_rounds, "", config_equal_toM_bits);
-	md5 f(config_nr_rounds);
+	md5 f(config_nr_rounds, config_equal_toM_bits);
 
 	/* Generate a known-valid (message, hash)-pair */
 	uint32_t M[16];
@@ -977,6 +1049,10 @@ static void preimage_md5()
 		comment("Message was read from file " + config_message_file);
 		comment("Message :");
 		while (getline(mes_file, s)) {
+			if (s.find("x") != std::string::npos) {
+					std::cerr << "Message should be decimal." << '\n';
+					exit(1);
+			}
 			std::istringstream isstream(s);
 			uint32_t ui;
 			isstream >> ui;
@@ -989,8 +1065,11 @@ static void preimage_md5()
 	}
 
 	uint32_t h[4];
-	// todo
-	//md5_forward(config_nr_rounds, M, h);
+	md5_forward(config_nr_rounds, M, h);
+	comment(format("h[0] : $", h[0]));
+	comment(format("h[1] : $", h[0]));
+	comment(format("h[2] : $", h[0]));
+	comment(format("h[3] : $", h[0]));
 
 	/* Fix message bits */
 	comment(format("Fix $ message bits", config_nr_message_bits));
@@ -1011,9 +1090,6 @@ static void preimage_md5()
 	if (config_nr_hash_bits > 128) {
 		config_nr_hash_bits = 128;
 	}
-  if (config_nr_rounds > 64) {
-		config_nr_rounds = 64;
-	}
 
 	comment(format("Fix $ hash bits", config_nr_hash_bits));
 	std::vector<unsigned int> hash_bits(128);
@@ -1021,7 +1097,6 @@ static void preimage_md5()
 		hash_bits[i] = i;
 	}
 
-	// std::random_shuffle(hash_bits.begin(), hash_bits.end());
 	for (unsigned i = 0; i < config_nr_hash_bits; ++i) {
 		unsigned r = hash_bits[i] / 32;
 		unsigned s = hash_bits[i] % 32;
