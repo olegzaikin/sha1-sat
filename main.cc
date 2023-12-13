@@ -41,7 +41,7 @@ extern "C" {
 
 #include "format.hh"
 
-std::string version = "1.0.2"; // The
+std::string version = "1.0.3";
 
 /* Instance options */
 static std::string config_attack = "preimage";
