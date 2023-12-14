@@ -14,5 +14,6 @@ hval=1
 for i in {1..31}
 do
     echo $i
-    ./main --cnf --rounds=${rnd} --hash-bits=160 --hash-value=${hval} --attack=preimage --equal-toM-bits=${i} --seed=0 > sha1_preimage_${rnd}r_${i}bitM_${havl}hash.cnf
+    #./main --cnf --hash-function=sha1 --rounds=${rnd} --hash-bits=160 --hash-value=${hval} --attack=preimage --equal-toM-bits=${i} --seed=0 > sha1_preimage_${rnd}r_${i}bitM_${havl}hash.cnf
+    ./main --cnf --hash-function=md5 --rounds=${rnd} --hash-bits=128 --hash-value=${hval} --attack=preimage --equal-toM-bits=${i} --seed=0 > md5_preimage_${rnd}r_${i}bitM_${havl}hash.cnf
 done

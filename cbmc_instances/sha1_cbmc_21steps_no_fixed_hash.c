@@ -122,7 +122,7 @@ int main() {
   int N = 5;
   unsigned int input1[M];
   unsigned int output1[N];
-  int steps_num = 22;
+  int steps_num = 21;
   int i;
 
   sha1(input1, output1, steps_num);

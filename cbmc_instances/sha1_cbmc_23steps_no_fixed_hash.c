@@ -101,31 +101,19 @@ void sha1(unsigned int* M, unsigned int* hash, int steps_num) {
   //  a = t;
   // }
 
-  // A = sum(A, a, 32);
-  // B = sum(B, b, 32);
-  // C = sum(C, c, 32);
-  // D = sum(D, d, 32);
-  // E = sum(E, e, 32);
-  
-  /*
+/*
   unsigned int aa = A + a;
   unsigned int bb = B + b;
   unsigned int cc = C + c;
   unsigned int dd = D + d;
   unsigned int ee = E + e;
+*/
 
-  hash[0] = aa; 
-  hash[1] = bb; 
-  hash[2] = cc; 
-  hash[3] = dd; 
-  hash[4] = ee;
-  */
-
-  hash[0] = a; 
-  hash[1] = b; 
-  hash[2] = c; 
-  hash[3] = d; 
-  hash[4] = e;
+  hash[0] = A + a; 
+  hash[1] = B + b; 
+  hash[2] = c + c; 
+  hash[3] = D + d; 
+  hash[4] = E + e;
 }
 
 
@@ -138,7 +126,7 @@ int main() {
   int i;
 
   sha1(input1, output1, steps_num);
-  
+ 
   __CPROVER_assert(0,"test");
   return 0;
 }

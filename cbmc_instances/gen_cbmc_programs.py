@@ -3,7 +3,7 @@
 import sys
 
 base_name = "../random_messages/random_message_"
-first_part_lines_num = 140
+first_part_lines_num = 128
 
 if len(sys.argv) < 2:
   print('Usage: script cbmc-program-name')
