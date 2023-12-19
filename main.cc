@@ -718,7 +718,8 @@ static uint32_t rotl(uint32_t x, unsigned int n)
 	return (x << n) | (x >> (32 - n));
 }
 
-static void sha1_forward(unsigned int nr_rounds, uint32_t w[80], uint32_t h_out[5])
+static void sha1_forward(unsigned int nr_rounds, uint32_t w[80],
+                         uint32_t h_out[5], unsigned equal_toM_bits = 0)
 {
 	uint32_t h0 = 0x67452301;
 	uint32_t h1 = 0xEFCDAB89;
@@ -752,7 +753,11 @@ static void sha1_forward(unsigned int nr_rounds, uint32_t w[80], uint32_t h_out[
 			k = 0xCA62C1D6;
 		}
 
-		uint32_t t = rotl(a, 5) + f + e + k + w[i];
+		//uint32_t t = rotl(a, 5) + f + e + k + w[i];
+		// Intermediate inversion problem:
+		uint32_t tempW = w[i] << equal_toM_bits;
+  	uint32_t weakW = tempW >> equal_toM_bits;
+		uint32_t t = rotl(a, 5) + f + e + k + weakW;
 		e = d;
 		d = c;
 		c = rotl(b, 30);
@@ -767,7 +772,9 @@ static void sha1_forward(unsigned int nr_rounds, uint32_t w[80], uint32_t h_out[
 	h_out[4] = h4 + e;
 }
 
-static void md5_forward(unsigned int nr_rounds, uint32_t M[16], uint32_t h_out[4])
+// By default equal_toM_bits == 0 means that weakM_i == M_i
+static void md5_forward(unsigned int nr_rounds, uint32_t M[16],
+                        uint32_t h_out[4], unsigned equal_toM_bits = 0)
 {
 	uint32_t h0 = 0x67452301;
 	uint32_t h1 = 0xEFCDAB89;
@@ -778,6 +785,8 @@ static void md5_forward(unsigned int nr_rounds, uint32_t M[16], uint32_t h_out[4
 	uint32_t b = h1;
 	uint32_t c = h2;
 	uint32_t d = h3;
+
+	assert((equal_toM_bits >= 0) && (equal_toM_bits <= 32));
 
 	unsigned M_index = -1;
 	for (unsigned i = 0; i < nr_rounds; ++i) {
@@ -800,8 +809,13 @@ static void md5_forward(unsigned int nr_rounds, uint32_t M[16], uint32_t h_out[4
 				f = c ^ (~d | b);
 			}
 
+			// Intermediate inversion problem:
+			uint32_t tempM = M[M_index] << equal_toM_bits;
+  		uint32_t weakM = tempM >> equal_toM_bits;
+
 			// a = b + ((a + F(b,c,d) + M[g] + K[i]) <<< s)
-			uint32_t new_val = a + f + M[M_index] + MD5_const[i];
+			uint32_t new_val = a + f + weakM + MD5_const[i];
+			//uint32_t new_val = a + f + M[M_index] + MD5_const[i];
 			new_val = b + rotl(new_val, MD5_shifts[i]);
  
 			a = d;
@@ -1065,7 +1079,7 @@ static void preimage_md5()
 	}
 
 	uint32_t h[4];
-	md5_forward(config_nr_rounds, M, h);
+	md5_forward(config_nr_rounds, M, h, config_equal_toM_bits);
 	comment(format("h[0] : $", h[0]));
 	comment(format("h[1] : $", h[0]));
 	comment(format("h[2] : $", h[0]));
@@ -1145,7 +1159,7 @@ static void preimage_sha1()
 	}
 
 	uint32_t h[5];
-	sha1_forward(config_nr_rounds, w, h);
+	sha1_forward(config_nr_rounds, w, h, config_equal_toM_bits);
 
 	/* Fix message bits */
 	comment(format("Fix $ message bits", config_nr_message_bits));
