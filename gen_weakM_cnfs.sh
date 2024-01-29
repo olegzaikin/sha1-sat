@@ -11,25 +11,25 @@ version=0.0.3
 #rnd=$1
 
 rnd=28
-echo "md5, rnd=${rnd}"
-for i in {1..31}
-do
-    echo "i=$i"
-    # 1-hash
-    hval=1
-    ./main --cnf --hash-function=md5 --rounds=${rnd} --hash-bits=128 --hash-value=${hval} --attack=preimage --equal-toM-bits=${i} --seed=0 > md5_preimage_${rnd}r_${i}bitM_${hval}hash.cnf
-    # 0-hash
-    hval=0
-    ./main --cnf --hash-function=md5 --rounds=${rnd} --hash-bits=128 --hash-value=${hval} --attack=preimage --equal-toM-bits=${i} --seed=0 > md5_preimage_${rnd}r_${i}bitM_${hval}hash.cnf
-    # random:
-    for j in {0..7}
-    do
-	echo "  j=$j"
-	./main --cnf --hash-function=md5 --rounds=${rnd} --hash-bits=128 --attack=preimage --equal-toM-bits=${i} --message-file=./random_messages/random_message_${j} > md5_preimage_${rnd}r_${i}bitM_randomhash${j}.cnf
-    done
-done
+#echo "md5, rnd=${rnd}"
+#for i in {1..31}
+#do
+#    echo "i=$i"
+#    # 1-hash
+#    hval=1
+#    ./main --cnf --hash-function=md5 --rounds=${rnd} --hash-bits=128 --hash-value=${hval} --attack=preimage --equal-toM-bits=${i} --seed=0 > md5_preimage_${rnd}r_${i}bitM_${hval}hash.cnf
+#    # 0-hash
+#    hval=0
+#    ./main --cnf --hash-function=md5 --rounds=${rnd} --hash-bits=128 --hash-value=${hval} --attack=preimage --equal-toM-bits=${i} --seed=0 > md5_preimage_${rnd}r_${i}bitM_${hval}hash.cnf
+#    # random:
+#    for j in {0..7}
+#    do
+#	echo "  j=$j"
+#	./main --cnf --hash-function=md5 --rounds=${rnd} --hash-bits=128 --attack=preimage --equal-toM-bits=${i} --message-file=./random_messages/random_message_${j} > md5_preimage_${rnd}r_${i}bitM_randomhash${j}.cnf
+#    done
+#done
 
-rnd=22
+rnd=25
 echo "sha1, rnd=${rnd}"
 for i in {1..31}
 do

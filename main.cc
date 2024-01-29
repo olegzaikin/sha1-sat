@@ -41,7 +41,7 @@ extern "C" {
 
 #include "format.hh"
 
-std::string version = "1.0.4";
+std::string version = "1.0.5";
 
 /* Instance options */
 static std::string config_attack = "preimage";
@@ -50,8 +50,11 @@ static unsigned int config_nr_rounds = 80;
 static unsigned int config_nr_message_bits = 0;
 static unsigned int config_nr_hash_bits = 160;
 static int config_hash_value = -1;
-static unsigned int config_equal_toM_bits = 32; // How many message bits are unknown on the last step:
-static std::string config_hash_function = "sha1"; // sha1 or md5
+// How many message bits are unknown on the last step:
+static unsigned int config_equal_toM_bits = 32; // intermediate inverse problem value
+static std::string config_hash_function = "sha1"; // sha1, md4, or md5
+// Whether the incremental operation is done after the last step (0 or 1):
+static unsigned int is_incremental_step = 1;
 
 /* Format options */
 static bool config_cnf = false;
@@ -704,11 +707,21 @@ public:
 		int e[32];
 		rotl(e, a[nr_rounds + 0], 30);
 
-		add2("h_out", h_out[0], h_in[0], a[nr_rounds + 4]);
-		add2("h_out", h_out[1], h_in[1], a[nr_rounds + 3]);
-		add2("h_out", h_out[2], h_in[2], c);
-		add2("h_out", h_out[3], h_in[3], d);
-		add2("h_out", h_out[4], h_in[4], e);
+		if (is_incremental_step) {
+			add2("h_out", h_out[0], h_in[0], a[nr_rounds + 4]);
+			add2("h_out", h_out[1], h_in[1], a[nr_rounds + 3]);
+			add2("h_out", h_out[2], h_in[2], c);
+			add2("h_out", h_out[3], h_in[3], d);
+			add2("h_out", h_out[4], h_in[4], e);
+		}
+		// If incrementing is turned off, output is just a b c d:
+		else {
+			eq(h_out[0], a[nr_rounds + 4], 32);
+			eq(h_out[1], a[nr_rounds + 3], 32);
+			eq(h_out[2], c, 32);
+			eq(h_out[3], d, 32);
+			eq(h_out[4], e, 32);
+		}
 	}
 
 };
@@ -765,11 +778,20 @@ static void sha1_forward(unsigned int nr_rounds, uint32_t w[80],
 		a = t;
 	}
 
-	h_out[0] = h0 + a;
-	h_out[1] = h1 + b;
-	h_out[2] = h2 + c;
-	h_out[3] = h3 + d;
-	h_out[4] = h4 + e;
+	if (is_incremental_step) {
+		h_out[0] = h0 + a;
+		h_out[1] = h1 + b;
+		h_out[2] = h2 + c;
+		h_out[3] = h3 + d;
+		h_out[4] = h4 + e;
+	}
+	else {
+		h_out[0] = a;
+		h_out[1] = b;
+		h_out[2] = c;
+		h_out[3] = d;
+		h_out[4] = e;
+	}
 }
 
 // By default equal_toM_bits == 0 means that weakM_i == M_i
@@ -824,10 +846,18 @@ static void md5_forward(unsigned int nr_rounds, uint32_t M[16],
 			b = new_val;
 	}
 
-	h_out[0] = h0 + a;
-	h_out[1] = h1 + b;
-	h_out[2] = h2 + c;
-	h_out[3] = h3 + d;
+	if (is_incremental_step) {
+		h_out[0] = h0 + a;
+		h_out[1] = h1 + b;
+		h_out[2] = h2 + c;
+		h_out[3] = h3 + d;
+	}
+	else {
+		h_out[0] = a;
+		h_out[1] = b;
+		h_out[2] = c;
+		h_out[3] = d;
+	}
 }
 
 // Add-on - a class for MD5 hash function:
@@ -1027,14 +1057,24 @@ public:
 			d[j] = internal_states[d_intern_index][j];
 		}
 
+		// If incrementing is turned on, output is A B C D, where:
 		// A = A + AA
 		// B = B + BB
 		// C = C + CC
 		// D = D + DD
-		add2("h_out", h_out[0], a, h_in[0]);
-		add2("h_out", h_out[1], b, h_in[1]);
-		add2("h_out", h_out[2], c, h_in[2]);
-		add2("h_out", h_out[3], d, h_in[3]);
+		if (is_incremental_step) {
+			add2("h_out", h_out[0], a, h_in[0]);
+			add2("h_out", h_out[1], b, h_in[1]);
+			add2("h_out", h_out[2], c, h_in[2]);
+			add2("h_out", h_out[3], d, h_in[3]);
+		}
+		// If incrementing is turned off, output is just a b c d:
+		else {
+			eq(h_out[0], a, 32);
+			eq(h_out[1], b, 32);
+			eq(h_out[2], c, 32);
+			eq(h_out[3], d, 32);
+		}
 	}
 
 };
@@ -1319,6 +1359,7 @@ int main(int argc, char *argv[])
 			("hash-value", value<int>(&config_hash_value), "Hash value (0 | 1)")
 			("equal-toM-bits", value<unsigned int>(&config_equal_toM_bits), "Number of unknown message bits on the last step (0-32)")
 			("hash-function", value<std::string>(), "Hash function (sha1 | md5)")
+			("incremental-step", value<unsigned int>(&is_incremental_step), "Whether the incremental step is done after the last step")
 		;
 
 		options_description format_options("Format options");
@@ -1413,6 +1454,8 @@ int main(int argc, char *argv[])
 		if (map.count("compact-adders"))
 			config_use_compact_adders = true;
 	}
+
+	assert(is_incremental_step == 0 || is_incremental_step == 1);
 
 	if (!config_cnf && !config_opb) {
 		std::cerr << "Must specify either --cnf or --opb\n";
