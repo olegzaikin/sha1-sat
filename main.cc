@@ -41,7 +41,7 @@ extern "C" {
 
 #include "format.hh"
 
-std::string version = "1.0.5";
+std::string version = "1.0.6";
 
 /* Instance options */
 static std::string config_attack = "preimage";
@@ -76,6 +76,14 @@ static int nr_variables = 0;
 static unsigned int nr_clauses = 0;
 static unsigned int nr_xor_clauses = 0;
 static unsigned int nr_constraints = 0;
+
+unsigned MD4_M_indicies[48]{0, 1, 2,  3,  4, 5,  6,  7,  8, 9, 10, 11,  12, 13, 14, 15,
+                            0, 4, 8, 12,  1, 5,  9, 13,  2, 6, 10, 14,  3,   7, 11, 15,
+														0, 8, 4, 12,  2, 10, 6, 14,  1, 9,  5, 13,  3,  11,  7, 15};
+
+int MD4_shifts[48]{ 3, 7, 11, 19,  3, 7, 11, 19,  3, 7, 11, 19,  3, 7, 11, 19,
+                    3, 5,  9, 13,  3, 5,  9, 13,  3, 5,  9, 13,  3, 5,  9, 13,
+										3, 9, 11, 15,  3, 9, 11, 15,  3, 9, 11, 15,  3, 9, 11, 15};
 
 unsigned MD5_const[64] = {0xd76aa478, 0xe8c7b756, 0x242070db, 0xc1bdceee,
 													0xf57c0faf, 0x4787c62a, 0xa8304613, 0xfd469501,
@@ -812,7 +820,7 @@ static void md5_forward(unsigned int nr_rounds, uint32_t M[16],
 
 	unsigned M_index = -1;
 	for (unsigned i = 0; i < nr_rounds; ++i) {
-			uint32_t f;
+			uint32_t f = 0;
 			if (i >= 0 && i < 16) {
 				M_index = i;
 				// F = (B and C) or ((not B) and D)
@@ -1168,6 +1176,331 @@ static void preimage_md5()
 	}
 }
 
+// Add-on - a class for MD5 hash function:
+class md4 {
+public:
+	int M[16][32];
+	int h_in[4][32];
+	int h_out[4][32];
+	int internal_states[52][32]; // size == number of steps + 4
+
+	md4(unsigned int nr_rounds, unsigned equal_toM_bits = 32)
+	{
+		comment("md4");
+		comment(format("parameter nr_rounds = $", nr_rounds));
+
+		assert(nr_rounds <= 48);
+
+		for (unsigned int i = 0; i < 16; ++i) {
+			new_vars(format("M[$]", i), M[i], 32, !config_restrict_branching);
+		}
+
+		new_vars("h_in0", h_in[0], 32);
+		new_vars("h_in1", h_in[1], 32);
+		new_vars("h_in2", h_in[2], 32);
+		new_vars("h_in3", h_in[3], 32);
+
+		new_vars("h_out0", h_out[0], 32);
+		new_vars("h_out1", h_out[1], 32);
+		new_vars("h_out2", h_out[2], 32);
+		new_vars("h_out3", h_out[3], 32);
+
+		// New variables only starting from index 4 because 0..3 are equal to h_in:
+		for (unsigned int i = 0; i < nr_rounds; ++i) {
+			new_vars(format("internal_states[$]", i + 4), internal_states[i + 4], 32);
+		}
+
+		// Fix constants:
+		int MD4_constants[3][32];
+		new_constant("MD4_constants[0]", MD4_constants[0], 0x0);
+		new_constant("MD4_constants[1]", MD4_constants[1], 0x5A827999);
+		new_constant("MD4_constants[2]", MD4_constants[2], 0x6ED9EBA1);
+
+		// Fix registers' initial value: 
+		constant32(h_in[0], 0x67452301);
+		constant32(h_in[1], 0xEFCDAB89);
+		constant32(h_in[2], 0x98BADCFE);
+		constant32(h_in[3], 0x10325476);
+
+		for (int j = 0; j < 32; j++) {
+			internal_states[0][j] = h_in[0][j];
+			internal_states[1][j] = h_in[1][j];
+			internal_states[2][j] = h_in[2][j];
+			internal_states[3][j] = h_in[3][j];
+		}
+		unsigned a_intern_index = 0;
+		unsigned b_intern_index = 1;
+		unsigned c_intern_index = 2;
+		unsigned d_intern_index = 3;
+
+		for (unsigned i = 0; i < nr_rounds; ++i) {
+			int a[32];
+			int b[32];
+			int c[32];
+			int d[32];
+			assert(a_intern_index < i + 4); // i + 3 is the last index
+			assert(b_intern_index < i + 4);
+			assert(c_intern_index < i + 4);
+			assert(d_intern_index < i + 4);
+			assert(a_intern_index != b_intern_index);
+			assert(a_intern_index != c_intern_index);
+			assert(a_intern_index != d_intern_index);
+			assert(b_intern_index != c_intern_index);
+			assert(b_intern_index != d_intern_index);
+			assert(c_intern_index != d_intern_index);
+			for (unsigned j = 0; j < 32; j++) {
+				a[j] = internal_states[a_intern_index][j];
+				b[j] = internal_states[b_intern_index][j];
+				c[j] = internal_states[c_intern_index][j];
+				d[j] = internal_states[d_intern_index][j];
+			}
+			
+			int f[32];
+			new_vars(format("f[$]", i), f, 32);
+
+			if (i >= 0 && i < 16) {
+				// f = (b and c) or ((not b) and d)
+				for (unsigned j = 0; j < 32; ++j) {
+					clause(-f[j], -b[j], c[j]);
+					clause(-f[j], b[j], d[j]);
+					clause(-f[j], c[j], d[j]);
+					clause(f[j], -b[j], -c[j]);
+					clause(f[j], b[j], -d[j]);
+					clause(f[j], -c[j], -d[j]);
+				}
+			}
+			else if (i >= 16 && i < 32) {
+				// f = (b and c) or (b and d) or (c and d)
+				for (unsigned j = 0; j < 32; ++j) {
+					clause(-f[j], b[j], c[j]);
+					clause(-f[j], b[j], d[j]);
+					clause(-f[j], c[j], d[j]);
+					clause(f[j], -b[j], -c[j]);
+					clause(f[j], -b[j], -d[j]);
+					clause(f[j], -c[j], -d[j]);
+				}
+			} 
+			else if (i >= 32 && i < 48) {
+				// F(B,C,D) = B xor C xor D: 
+				xor3(f, b, c, d);
+			}
+
+			// a = b + ((a + F(b,c,d) + M[g] + K[i]) <<< s)
+			int sum[32];
+			new_vars(format("sum on i==$", i), sum, 32);
+			// sum = a + F(b,c,d) + M[g] + K[i]
+			// Intermediate inversion problem if needed:
+      if ((equal_toM_bits < 32) && (i == nr_rounds - 1)) {
+			    // 2bitM:
+			    // tempW = W[i] << 30;
+    			// weakW = tempW >> 30;
+			    comment(format("$bitM", equal_toM_bits));
+			    int weakM[32];
+			    new_vars("weakM", weakM, 32);
+			    // Leftmost bits are constant 0s:
+			    for (unsigned j = 0; j < 32-equal_toM_bits; j++) {
+						constant(weakM[j], false);
+			    }
+			    // Remaining rightmost bits are equal to message:
+			    for (unsigned j = 32-equal_toM_bits; j < 32; j++) {
+						eq(&weakM[j], &M[MD4_M_indicies[i]][j], 1);
+			    }
+					add4(format("add4 on i==$", i), sum, a, f, weakM, MD4_constants[i / 16]);
+			}
+			else {
+					// standard call:
+			    add4(format("add4 on i==$", i), sum, a, f, M[MD4_M_indicies[i]], MD4_constants[i / 16]);
+			}
+			// new internal state = sum <<< s:
+			rotl(internal_states[i + 4], sum, MD4_shifts[i]);
+ 
+			// update indicies:
+			a_intern_index = d_intern_index;
+			d_intern_index = c_intern_index;
+			c_intern_index = b_intern_index;
+			b_intern_index = i + 4;
+		}
+
+		int a[32];
+		int b[32];
+		int c[32];
+		int d[32];
+		for (unsigned j = 0; j < 32; j++) {
+			a[j] = internal_states[a_intern_index][j];
+			b[j] = internal_states[b_intern_index][j];
+			c[j] = internal_states[c_intern_index][j];
+			d[j] = internal_states[d_intern_index][j];
+		}
+
+		// If incrementing is turned on, output is A B C D, where:
+		// A = A + AA
+		// B = B + BB
+		// C = C + CC
+		// D = D + DD
+		if (is_incremental_step) {
+			add2("h_out", h_out[0], a, h_in[0]);
+			add2("h_out", h_out[1], b, h_in[1]);
+			add2("h_out", h_out[2], c, h_in[2]);
+			add2("h_out", h_out[3], d, h_in[3]);
+		}
+		// If incrementing is turned off, output is just a b c d:
+		else {
+			eq(h_out[0], a, 32);
+			eq(h_out[1], b, 32);
+			eq(h_out[2], c, 32);
+			eq(h_out[3], d, 32);
+		}
+	}
+
+};
+
+// By default equal_toM_bits == 0 means that weakM_i == M_i
+static void md4_forward(unsigned int nr_rounds, uint32_t M[16],
+                        uint32_t h_out[4], unsigned equal_toM_bits = 0)
+{
+	uint32_t h0 = 0x67452301;
+	uint32_t h1 = 0xEFCDAB89;
+	uint32_t h2 = 0x98BADCFE;
+	uint32_t h3 = 0x10325476;
+
+	uint32_t a = h0;
+	uint32_t b = h1;
+	uint32_t c = h2;
+	uint32_t d = h3;
+
+	assert((equal_toM_bits >= 0) && (equal_toM_bits <= 32));
+
+	unsigned K = 0x0;
+
+	for (unsigned i = 0; i < nr_rounds; ++i) {
+			uint32_t f = 0;
+			if (i >= 0 && i < 16) {
+				f = (b & c) | (~b & d);
+				K = 0x0;
+			} else if (i >= 16 && i < 32) {
+				f = (b & c) | (b & d) | (c & d);
+				K = 0x5A827999;
+			} else if (i >= 32 && i < 48) {
+				f = b ^ c ^ d;
+				K = 0x6ED9EBA1;
+			}
+
+			// Intermediate inversion problem:
+			uint32_t tempM = M[MD4_M_indicies[i]] << equal_toM_bits;
+  		uint32_t weakM = tempM >> equal_toM_bits;
+
+			// a = (a + F(b,c,d) + M[g] + K[i]) <<< s
+			uint32_t new_val = a + f + weakM + K;
+			new_val = rotl(new_val, MD4_shifts[i]);
+ 
+			a = d;
+			d = c;
+			c = b;
+			b = new_val;
+	}
+
+	if (is_incremental_step) {
+		h_out[0] = h0 + a;
+		h_out[1] = h1 + b;
+		h_out[2] = h2 + c;
+		h_out[3] = h3 + d;
+	}
+	else {
+		h_out[0] = a;
+		h_out[1] = b;
+		h_out[2] = c;
+		h_out[3] = d;
+	}
+}
+
+// Find an MD4's preimage:
+static void preimage_md4()
+{
+	if (config_nr_rounds > 48) {
+		config_nr_rounds = 48;
+		comment(format("nr_rounds was changed to $", config_nr_rounds));
+	}
+	md4 f(config_nr_rounds, config_equal_toM_bits);
+
+	/* Generate a known-valid (message, hash)-pair */
+	uint32_t M[16];
+
+	if (config_message_file == "") {
+		for (unsigned int i = 0; i < 16; ++i)
+			M[i] = lrand48();
+	}
+	else {
+		std::ifstream mes_file(config_message_file);
+		std::string s;
+		unsigned i = 0;
+		comment("Message was read from file " + config_message_file);
+		comment("Message :");
+		while (getline(mes_file, s)) {
+			if (s.find("x") != std::string::npos) {
+					std::cerr << "Message should be decimal." << '\n';
+					exit(1);
+			}
+			std::istringstream isstream(s);
+			uint32_t ui;
+			isstream >> ui;
+			M[i] = ui;
+			comment(format("M[$] = $", i, M[i]));
+			i++;
+			//std::cout << ui << std::endl;
+		}
+		assert(i == 16);
+	}
+
+	uint32_t h[4];
+	md4_forward(config_nr_rounds, M, h, config_equal_toM_bits);
+	comment(format("h[0] : $", h[0]));
+	comment(format("h[1] : $", h[0]));
+	comment(format("h[2] : $", h[0]));
+	comment(format("h[3] : $", h[0]));
+
+	/* Fix message bits */
+	comment(format("Fix $ message bits", config_nr_message_bits));
+
+	std::vector<unsigned int> message_bits(512);
+	for (unsigned int i = 0; i < 512; ++i)
+		message_bits[i] = i;
+
+	//std::random_shuffle(message_bits.begin(), message_bits.end());
+	for (unsigned int i = 0; i < config_nr_message_bits; ++i) {
+		unsigned int r = message_bits[i] / 32; // max(r) == 15
+		unsigned int s = message_bits[i] % 32; // max(s) == 31
+
+		constant(f.M[r][s], (M[r] >> s) & 1);
+	}
+
+	// Fix hash bits
+	if (config_nr_hash_bits > 128) {
+		config_nr_hash_bits = 128;
+	}
+
+	comment(format("Fix $ hash bits", config_nr_hash_bits));
+	std::vector<unsigned int> hash_bits(128);
+	for (unsigned int i = 0; i < 128; ++i) {
+		hash_bits[i] = i;
+	}
+
+	for (unsigned i = 0; i < config_nr_hash_bits; ++i) {
+		unsigned r = hash_bits[i] / 32;
+		unsigned s = hash_bits[i] % 32;
+		assert(r < 4);
+		assert(s < 32);
+		// If no hash value is given:
+		if (config_hash_value == -1) { 
+			constant(f.h_out[r][s], (h[r] >> s) & 1);
+		}
+		else {
+			// If config_hash_value == 0 (1), all hash bits are 0 (1):
+			assert(config_hash_value == 0 || config_hash_value == 1);
+			constant(f.h_out[r][s], (bool)config_hash_value);
+		}
+	}
+}
+
 // SHA-1
 static void preimage_sha1()
 {
@@ -1428,7 +1761,9 @@ int main(int argc, char *argv[])
 			return EXIT_FAILURE;
 		}
 
-		if (config_hash_function != "sha1" && config_hash_function != "md5") {
+		if (config_hash_function != "sha1" && 
+		    config_hash_function != "md5" &&
+		    config_hash_function != "md4") {
 			std::cerr << "Invalid --hash-function\n";
 			return EXIT_FAILURE;
 		}
@@ -1503,8 +1838,11 @@ int main(int argc, char *argv[])
 		if (config_hash_function == "sha1") {
 			preimage_sha1();
 		}
-		else {
+		else if (config_hash_function == "md5") {
 			preimage_md5();
+		}
+		else if (config_hash_function == "md4") {
+			preimage_md4();
 		}
 	} else if (config_attack == "second-preimage") {
 		second_preimage_sha1();

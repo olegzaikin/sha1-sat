@@ -16,6 +16,12 @@
 ./main --cnf --rounds=29 --hash-bits=128 --hash-value=0 --attack=preimage --seed=0 --hash-function=md5 > md5_preimage_29r_0hash.cnf
 ./main --cnf --rounds=29 --hash-bits=128 --hash-value=1 --attack=preimage --seed=0 --hash-function=md5 > md5_preimage_29r_1hash.cnf
 
+# MD4:
+./main --cnf --rounds=30 --hash-bits=128 --hash-value=0 --attack=preimage --seed=0 --hash-function=md4 > md4_preimage_30r_0hash.cnf
+./main --cnf --rounds=30 --hash-bits=128 --hash-value=1 --attack=preimage --seed=0 --hash-function=md4 > md4_preimage_30r_1hash.cnf
+./main --cnf --rounds=31 --hash-bits=128 --hash-value=0 --attack=preimage --seed=0 --hash-function=md4 > md4_preimage_31r_0hash.cnf
+./main --cnf --rounds=31 --hash-bits=128 --hash-value=1 --attack=preimage --seed=0 --hash-function=md4 > md4_preimage_31r_1hash.cnf
+
 for i in {0..7}
 do
     echo $i
