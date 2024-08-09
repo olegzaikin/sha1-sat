@@ -690,13 +690,15 @@ public:
 			    comment(format("$bitW", equal_toM_bits));
 			    int weakW[32];
 			    new_vars("weakW", weakW, 32);
-			    // Leftmost bits are constant 0s:
+			    // The rightmost bits are constant 0s:
 			    for (unsigned j = 0; j < 32-equal_toM_bits; j++) {
 						constant(weakW[j], false);
 			    }
-			    // Remaining rightmost bits are equal to message:
+			    // The remaining leftmost bits are equal to the message:
 			    for (unsigned j = 32-equal_toM_bits; j < 32; j++) {
-						eq(&weakW[j], &w[i][j], 1);
+						//eq(&weakW[j], &w[i][j], 1);
+						// New variables are not needed here:
+						weakW[j] = w[i][j];
 			    }
 			    add5(format("a[$]", i + 5), a[i + 5], prev_a, f, e, k[i / 20], weakW);
 			}

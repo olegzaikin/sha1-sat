@@ -29,21 +29,21 @@ rnd=28
 #    done
 #done
 
-rnd=25
+rnd=23
 echo "sha1, rnd=${rnd}"
-for i in {1..31}
+for i in {1..2}
 do
     echo "i=$i"
     # 1-hash
     hval=1
     ./main --cnf --hash-function=sha1 --rounds=${rnd} --hash-bits=160 --hash-value=${hval} --attack=preimage --equal-toM-bits=${i} --seed=0 > sha1_preimage_${rnd}r_${i}bitM_${hval}hash.cnf
     # 0-hash
-    hval=0
-    ./main --cnf --hash-function=sha1 --rounds=${rnd} --hash-bits=160 --hash-value=${hval} --attack=preimage --equal-toM-bits=${i} --seed=0 > sha1_preimage_${rnd}r_${i}bitM_${hval}hash.cnf
+    #hval=0
+    #./main --cnf --hash-function=sha1 --rounds=${rnd} --hash-bits=160 --hash-value=${hval} --attack=preimage --equal-toM-bits=${i} --seed=0 > sha1_preimage_${rnd}r_${i}bitM_${hval}hash.cnf
     # random:
-    for j in {0..7}
-    do
-	echo "  j=$j"
-	./main --cnf --hash-function=sha1 --rounds=${rnd} --hash-bits=160 --attack=preimage --equal-toM-bits=${i} --message-file=./random_messages/random_message_${j} > sha1_preimage_${rnd}r_${i}bitM_randomhash${j}.cnf
-    done
+    #for j in {0..7}
+    #do
+	#echo "  j=$j"
+	#./main --cnf --hash-function=sha1 --rounds=${rnd} --hash-bits=160 --attack=preimage --equal-toM-bits=${i} --message-file=./random_messages/random_message_${j} > sha1_preimage_${rnd}r_${i}bitM_randomhash${j}.cnf
+    #done
 done
