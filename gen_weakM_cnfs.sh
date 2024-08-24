@@ -1,7 +1,7 @@
 # Script for generating intermediate inversion problems for SHA-1
 
 script_name="gen_weakM_cnfs.sh"
-version=0.0.3
+version=0.0.4
 
 #if [ $# -eq 0 ]; then
 #    >&2 echo "${script_name} number-of-rounds" 
@@ -10,7 +10,7 @@ version=0.0.3
 
 #rnd=$1
 
-rnd=28
+#rnd=28
 #echo "md5, rnd=${rnd}"
 #for i in {1..31}
 #do
@@ -29,9 +29,9 @@ rnd=28
 #    done
 #done
 
-rnd=23
+rnd=22
 echo "sha1, rnd=${rnd}"
-for i in {1..2}
+for i in {1..31}
 do
     echo "i=$i"
     # 1-hash
