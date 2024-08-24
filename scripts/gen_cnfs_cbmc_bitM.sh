@@ -1,4 +1,7 @@
-for f in ./*cbmc_*.c
+python3 ./gen_weakM_cbmc.py ./cbmc_md5-28_1hash_bitM_base.c
+python3 ./gen_weakM_cbmc.py ./cbmc_md5-29_1hash_bitM_base.c
+
+for f in ./cbmc_*.c
 do
  echo "Processing $f"
  base_name=$(basename -- "$f" .c)
