@@ -41,7 +41,7 @@ extern "C" {
 
 #include "format.hh"
 
-std::string version = "1.0.7";
+std::string version = "1.0.8";
 
 /* Instance options */
 static std::string config_attack = "preimage";
@@ -1032,7 +1032,8 @@ public:
 			    }
 			    // Remaining rightmost bits are equal to message:
 			    for (unsigned j = 32-equal_toM_bits; j < 32; j++) {
-						eq(&weakM[j], &M[M_index][j], 1);
+						//eq(&weakM[j], &M[M_index][j], 1);
+						weakM[j] = M[M_index][j];
 			    }
 					add4(format("add4 on i==$", i), temp1, a, f, weakM, k[i]);
 			}
@@ -1305,7 +1306,8 @@ public:
 			    }
 			    // Remaining rightmost bits are equal to message:
 			    for (unsigned j = 32-equal_toM_bits; j < 32; j++) {
-						eq(&weakM[j], &M[MD4_M_indicies[i]][j], 1);
+						//eq(&weakM[j], &M[MD4_M_indicies[i]][j], 1);
+						weakM[j] = M[MD4_M_indicies[i]][j];
 			    }
 					add4(format("add4 on i==$", i), sum, a, f, weakM, MD4_constants[i / 16]);
 			}
