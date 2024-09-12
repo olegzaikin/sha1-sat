@@ -12,7 +12,7 @@ import sys
 import glob, os
 
 script_name = "log_to_csv.py"
-version = "0.0.1"
+version = "0.0.2"
 
 if len(sys.argv) == 2 and sys.argv[1] == '-v':
     print('Script ' + script_name + ' of version : ' + version)
@@ -57,17 +57,17 @@ for fname in log_files:
             elif 'cbmc' in words[1]:
                 index = 1
                 mod_inst_name = words[1].replace('cbmc_', '')
-            elif 'vegard' in words[1]:
+            elif 'nossum' in words[1]:
                 index = 2
-                mod_inst_name = words[1].replace('vegard_', '')
+                mod_inst_name = words[1].replace('nossum_', '')
             assert(index >= 0)
             inst_words = mod_inst_name.split('_')
             func_name = inst_words[0].lower()
-            mod_inst_name = func_name + '_' + inst_words[1] + '_' + inst_words[-2] + '_' + inst_words[-1]
-            #print(mod_inst_name)
+            mod_inst_name = func_name + '_' + inst_words[1] + '_' + inst_words[2] + '_' + inst_words[-2] + '_' + inst_words[-1]
+            print(mod_inst_name)
             rt = float(words[2])
-            #print('index : ' + str(index))
-            #print('runtime : ' + str(rt))
+            print('index : ' + str(index))
+            print('runtime : ' + str(rt))
             if mod_inst_name not in instances_runtimes:
                 runtimes = [-1, -1, -1]
                 runtimes[index] = rt
