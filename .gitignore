@@ -1,7 +1,5 @@
 main
 verify-preimage
 *.cnf
-random_message_*
 log_*
 out_*
-*cbmc_*_randomhash*.c
