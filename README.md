@@ -1,4 +1,4 @@
-sha1-sat -- SAT instance generator for SHA-1, MD5, and MD4
+sha1-sat - SAT instance generator for SHA-1, MD5, and MD4
 =========================================================
 
 ### About
@@ -20,13 +20,13 @@ Also, intermediate preimage attacks between rounds i and i+1 can now be generate
 
 /data - halfadder descriptions for the ESPRESSO minimizer.
 
-/random_messages - random messages, used to generate some CNFs.
+/random_messages - random messages used to generate some CNFs.
 
-# Compiling
+### Compiling
 
 ./make.sh
 
-# Running
+### Running
 
 To generate a CNF encoding a preimage attack on 23 first rounds
 (out of 80) of SHA-1, run:
