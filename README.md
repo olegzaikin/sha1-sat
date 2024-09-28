@@ -22,6 +22,9 @@ Also, intermediate preimage attacks between rounds i and i+1 can now be generate
 
 /random_messages - random messages used to generate some CNFs.
 
+/scripts - scripts for generating random hashes, generating CBMC CNFs,
+and for converting solvers' logs to a CSV-file.
+
 ### Compiling
 
 ./make.sh
