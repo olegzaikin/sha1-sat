@@ -41,7 +41,7 @@ extern "C" {
 
 #include "format.hh"
 
-std::string version = "1.0.6";
+std::string version = "1.1.0";
 
 /* Instance options */
 static std::string config_attack = "preimage";
@@ -55,6 +55,8 @@ static unsigned int config_equal_toM_bits = 32; // intermediate inverse problem 
 static std::string config_hash_function = "sha1"; // sha1, md4, or md5
 // Whether the incremental operation is done after the last step (0 or 1):
 static unsigned int is_incremental_step = 1;
+// Whether a compact encoding for intermediate inverse problems is used:
+static bool config_compact_interm_enc = false;
 
 /* Format options */
 static bool config_cnf = false;
@@ -696,7 +698,13 @@ public:
 			    }
 			    // Remaining rightmost bits are equal to message:
 			    for (unsigned j = 32-equal_toM_bits; j < 32; j++) {
-						eq(&weakW[j], &w[i][j], 1);
+						// Don't introduce new variables, use the remaining:
+						if (config_compact_interm_enc) {
+							weakW[j] = w[i][j];
+						}
+						else {
+							eq(&weakW[j], &w[i][j], 1);
+						}
 			    }
 			    add5(format("a[$]", i + 5), a[i + 5], prev_a, f, e, k[i / 20], weakW);
 			}
@@ -1030,7 +1038,12 @@ public:
 			    }
 			    // Remaining rightmost bits are equal to message:
 			    for (unsigned j = 32-equal_toM_bits; j < 32; j++) {
+					if (config_compact_interm_enc) {
+						weakM[j] = M[M_index][j];
+					}
+					else {
 						eq(&weakM[j], &M[M_index][j], 1);
+					}
 			    }
 					add4(format("add4 on i==$", i), temp1, a, f, weakM, k[i]);
 			}
@@ -1303,7 +1316,12 @@ public:
 			    }
 			    // Remaining rightmost bits are equal to message:
 			    for (unsigned j = 32-equal_toM_bits; j < 32; j++) {
+					if (config_compact_interm_enc) {
+						weakM[j] = M[MD4_M_indicies[i]][j];
+					}
+					else {
 						eq(&weakM[j], &M[MD4_M_indicies[i]][j], 1);
+					}
 			    }
 					add4(format("add4 on i==$", i), sum, a, f, weakM, MD4_constants[i / 16]);
 			}
@@ -1693,6 +1711,7 @@ int main(int argc, char *argv[])
 			("equal-toM-bits", value<unsigned int>(&config_equal_toM_bits), "Number of unknown message bits on the last step (0-32)")
 			("hash-function", value<std::string>(), "Hash function (sha1 | md5)")
 			("incremental-step", value<unsigned int>(&is_incremental_step), "Whether the incremental step is done after the last step")
+			("compact-interm-enc", "Compact intermediate preimage attacks encoding")
 		;
 
 		options_description format_options("Format options");
@@ -1767,6 +1786,9 @@ int main(int argc, char *argv[])
 			std::cerr << "Invalid --hash-function\n";
 			return EXIT_FAILURE;
 		}
+
+		if (map.count("compact-interm-enc"))
+			config_compact_interm_enc = true;
 
 		if (map.count("cnf"))
 			config_cnf = true;
