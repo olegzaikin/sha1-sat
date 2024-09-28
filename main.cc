@@ -41,7 +41,7 @@ extern "C" {
 
 #include "format.hh"
 
-std::string version = "1.0.8";
+std::string version = "1.0.6";
 
 /* Instance options */
 static std::string config_attack = "preimage";
@@ -690,15 +690,13 @@ public:
 			    comment(format("$bitW", equal_toM_bits));
 			    int weakW[32];
 			    new_vars("weakW", weakW, 32);
-			    // The rightmost bits are constant 0s:
+			    // Leftmost bits are constant 0s:
 			    for (unsigned j = 0; j < 32-equal_toM_bits; j++) {
 						constant(weakW[j], false);
 			    }
-			    // The remaining leftmost bits are equal to the message:
+			    // Remaining rightmost bits are equal to message:
 			    for (unsigned j = 32-equal_toM_bits; j < 32; j++) {
-						//eq(&weakW[j], &w[i][j], 1);
-						// New variables are not needed here:
-						weakW[j] = w[i][j];
+						eq(&weakW[j], &w[i][j], 1);
 			    }
 			    add5(format("a[$]", i + 5), a[i + 5], prev_a, f, e, k[i / 20], weakW);
 			}
@@ -1032,8 +1030,7 @@ public:
 			    }
 			    // Remaining rightmost bits are equal to message:
 			    for (unsigned j = 32-equal_toM_bits; j < 32; j++) {
-						//eq(&weakM[j], &M[M_index][j], 1);
-						weakM[j] = M[M_index][j];
+						eq(&weakM[j], &M[M_index][j], 1);
 			    }
 					add4(format("add4 on i==$", i), temp1, a, f, weakM, k[i]);
 			}
@@ -1306,8 +1303,7 @@ public:
 			    }
 			    // Remaining rightmost bits are equal to message:
 			    for (unsigned j = 32-equal_toM_bits; j < 32; j++) {
-						//eq(&weakM[j], &M[MD4_M_indicies[i]][j], 1);
-						weakM[j] = M[MD4_M_indicies[i]][j];
+						eq(&weakM[j], &M[MD4_M_indicies[i]][j], 1);
 			    }
 					add4(format("add4 on i==$", i), sum, a, f, weakM, MD4_constants[i / 16]);
 			}
