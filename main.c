@@ -39,7 +39,7 @@ extern "C" {
 #include <unistd.h>
 }
 
-#include "format.hh"
+#include "format.h"
 
 std::string version = "1.1.0";
 

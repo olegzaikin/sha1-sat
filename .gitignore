@@ -1,5 +1,6 @@
 main
 verify-preimage
+*.o
 *.cnf
 log_*
 out_*
