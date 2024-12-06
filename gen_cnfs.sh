@@ -7,6 +7,8 @@
 ./main --cnf --hash-function=sha1 --rounds=23 --hash-bits=160 --hash-value=1 --attack=preimage --seed=0 > sha1_preimage_23r_1hash.cnf
 ./main --cnf --hash-function=sha1 --rounds=24 --hash-bits=160 --hash-value=0 --attack=preimage --seed=0 > sha1_preimage_24r_0hash.cnf
 ./main --cnf --hash-function=sha1 --rounds=24 --hash-bits=160 --hash-value=1 --attack=preimage --seed=0 > sha1_preimage_24r_1hash.cnf
+./main --cnf --hash-function=sha1 --rounds=25 --hash-bits=160 --hash-value=0 --attack=preimage --seed=0 > sha1_preimage_25r_0hash.cnf
+./main --cnf --hash-function=sha1 --rounds=25 --hash-bits=160 --hash-value=1 --attack=preimage --seed=0 > sha1_preimage_25r_1hash.cnf
 
 # MD5:
 ./main --cnf --rounds=27 --hash-bits=128 --hash-value=0 --attack=preimage --seed=0 --hash-function=md5 > md5_preimage_27r_0hash.cnf
@@ -15,6 +17,8 @@
 ./main --cnf --rounds=28 --hash-bits=128 --hash-value=1 --attack=preimage --seed=0 --hash-function=md5 > md5_preimage_28r_1hash.cnf
 ./main --cnf --rounds=29 --hash-bits=128 --hash-value=0 --attack=preimage --seed=0 --hash-function=md5 > md5_preimage_29r_0hash.cnf
 ./main --cnf --rounds=29 --hash-bits=128 --hash-value=1 --attack=preimage --seed=0 --hash-function=md5 > md5_preimage_29r_1hash.cnf
+./main --cnf --rounds=30 --hash-bits=128 --hash-value=0 --attack=preimage --seed=0 --hash-function=md5 > md5_preimage_30r_0hash.cnf
+./main --cnf --rounds=30 --hash-bits=128 --hash-value=1 --attack=preimage --seed=0 --hash-function=md5 > md5_preimage_30r_1hash.cnf
 
 # MD4:
 #./main --cnf --rounds=30 --hash-bits=128 --hash-value=0 --attack=preimage --seed=0 --hash-function=md4 > md4_preimage_30r_0hash.cnf
@@ -30,8 +34,10 @@ do
     ./main --cnf --hash-function=sha1 --rounds=22 --hash-bits=160 --attack=preimage --message-file=./random_messages/random_message_${i} > sha1_preimage_22r_randomhash${i}.cnf
     ./main --cnf --hash-function=sha1 --rounds=23 --hash-bits=160 --attack=preimage --message-file=./random_messages/random_message_${i} > sha1_preimage_23r_randomhash${i}.cnf
     ./main --cnf --hash-function=sha1 --rounds=24 --hash-bits=160 --attack=preimage --message-file=./random_messages/random_message_${i} > sha1_preimage_24r_randomhash${i}.cnf
+    ./main --cnf --hash-function=sha1 --rounds=25 --hash-bits=160 --attack=preimage --message-file=./random_messages/random_message_${i} > sha1_preimage_25r_randomhash${i}.cnf
     # MD5:
     ./main --cnf --hash-function=md5 --rounds=27 --hash-bits=128 --attack=preimage --message-file=./random_messages/random_message_${i} > md5_preimage_27r_randomhash${i}.cnf
     ./main --cnf --hash-function=md5 --rounds=28 --hash-bits=128 --attack=preimage --message-file=./random_messages/random_message_${i} > md5_preimage_28r_randomhash${i}.cnf
     ./main --cnf --hash-function=md5 --rounds=29 --hash-bits=128 --attack=preimage --message-file=./random_messages/random_message_${i} > md5_preimage_29r_randomhash${i}.cnf
+    ./main --cnf --hash-function=md5 --rounds=30 --hash-bits=128 --attack=preimage --message-file=./random_messages/random_message_${i} > md5_preimage_30r_randomhash${i}.cnf
 done
