@@ -4,3 +4,4 @@ verify-preimage
 *.cnf
 log_*
 out_*
+/scripts/*.txt
