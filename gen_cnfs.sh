@@ -1,43 +1,46 @@
-# SHA-1:
-./main --cnf --hash-function=sha1 --rounds=21 --hash-bits=160 --hash-value=0 --attack=preimage --seed=0 > sha1_preimage_21r_0hash.cnf
-./main --cnf --hash-function=sha1 --rounds=21 --hash-bits=160 --hash-value=1 --attack=preimage --seed=0 > sha1_preimage_21r_1hash.cnf
-./main --cnf --hash-function=sha1 --rounds=22 --hash-bits=160 --hash-value=0 --attack=preimage --seed=0 > sha1_preimage_22r_0hash.cnf
-./main --cnf --hash-function=sha1 --rounds=22 --hash-bits=160 --hash-value=1 --attack=preimage --seed=0 > sha1_preimage_22r_1hash.cnf
-./main --cnf --hash-function=sha1 --rounds=23 --hash-bits=160 --hash-value=0 --attack=preimage --seed=0 > sha1_preimage_23r_0hash.cnf
-./main --cnf --hash-function=sha1 --rounds=23 --hash-bits=160 --hash-value=1 --attack=preimage --seed=0 > sha1_preimage_23r_1hash.cnf
-./main --cnf --hash-function=sha1 --rounds=24 --hash-bits=160 --hash-value=0 --attack=preimage --seed=0 > sha1_preimage_24r_0hash.cnf
-./main --cnf --hash-function=sha1 --rounds=24 --hash-bits=160 --hash-value=1 --attack=preimage --seed=0 > sha1_preimage_24r_1hash.cnf
-./main --cnf --hash-function=sha1 --rounds=25 --hash-bits=160 --hash-value=0 --attack=preimage --seed=0 > sha1_preimage_25r_0hash.cnf
-./main --cnf --hash-function=sha1 --rounds=25 --hash-bits=160 --hash-value=1 --attack=preimage --seed=0 > sha1_preimage_25r_1hash.cnf
+# Script for generating inverse problems for MD5 and SHA-1
+
+script_name="gen_cnfs.sh"
+version="0.0.2"
+
+cd ./scripts/
+python3 ./gen_random_hashes.py
+mv hashes_256bit.txt ..
+cd ..
+ln -s ../EnCnC/scripts/gen_hash_preimage_instances.py .
 
 # MD5:
-./main --cnf --rounds=27 --hash-bits=128 --hash-value=0 --attack=preimage --seed=0 --hash-function=md5 > md5_preimage_27r_0hash.cnf
-./main --cnf --rounds=27 --hash-bits=128 --hash-value=1 --attack=preimage --seed=0 --hash-function=md5 > md5_preimage_27r_1hash.cnf
-./main --cnf --rounds=28 --hash-bits=128 --hash-value=0 --attack=preimage --seed=0 --hash-function=md5 > md5_preimage_28r_0hash.cnf
-./main --cnf --rounds=28 --hash-bits=128 --hash-value=1 --attack=preimage --seed=0 --hash-function=md5 > md5_preimage_28r_1hash.cnf
-./main --cnf --rounds=29 --hash-bits=128 --hash-value=0 --attack=preimage --seed=0 --hash-function=md5 > md5_preimage_29r_0hash.cnf
-./main --cnf --rounds=29 --hash-bits=128 --hash-value=1 --attack=preimage --seed=0 --hash-function=md5 > md5_preimage_29r_1hash.cnf
-./main --cnf --rounds=30 --hash-bits=128 --hash-value=0 --attack=preimage --seed=0 --hash-function=md5 > md5_preimage_30r_0hash.cnf
-./main --cnf --rounds=30 --hash-bits=128 --hash-value=1 --attack=preimage --seed=0 --hash-function=md5 > md5_preimage_30r_1hash.cnf
-
-# MD4:
-#./main --cnf --rounds=30 --hash-bits=128 --hash-value=0 --attack=preimage --seed=0 --hash-function=md4 > md4_preimage_30r_0hash.cnf
-#./main --cnf --rounds=30 --hash-bits=128 --hash-value=1 --attack=preimage --seed=0 --hash-function=md4 > md4_preimage_30r_1hash.cnf
-#./main --cnf --rounds=31 --hash-bits=128 --hash-value=0 --attack=preimage --seed=0 --hash-function=md4 > md4_preimage_31r_0hash.cnf
-#./main --cnf --rounds=31 --hash-bits=128 --hash-value=1 --attack=preimage --seed=0 --hash-function=md4 > md4_preimage_31r_1hash.cnf
-
-for i in {0..7}
+for rnd in {27..30}
 do
-    echo $i
-    # SHA-1:
-    ./main --cnf --hash-function=sha1 --rounds=21 --hash-bits=160 --attack=preimage --message-file=./random_messages/random_message_${i} > sha1_preimage_21r_randomhash${i}.cnf
-    ./main --cnf --hash-function=sha1 --rounds=22 --hash-bits=160 --attack=preimage --message-file=./random_messages/random_message_${i} > sha1_preimage_22r_randomhash${i}.cnf
-    ./main --cnf --hash-function=sha1 --rounds=23 --hash-bits=160 --attack=preimage --message-file=./random_messages/random_message_${i} > sha1_preimage_23r_randomhash${i}.cnf
-    ./main --cnf --hash-function=sha1 --rounds=24 --hash-bits=160 --attack=preimage --message-file=./random_messages/random_message_${i} > sha1_preimage_24r_randomhash${i}.cnf
-    ./main --cnf --hash-function=sha1 --rounds=25 --hash-bits=160 --attack=preimage --message-file=./random_messages/random_message_${i} > sha1_preimage_25r_randomhash${i}.cnf
-    # MD5:
-    ./main --cnf --hash-function=md5 --rounds=27 --hash-bits=128 --attack=preimage --message-file=./random_messages/random_message_${i} > md5_preimage_27r_randomhash${i}.cnf
-    ./main --cnf --hash-function=md5 --rounds=28 --hash-bits=128 --attack=preimage --message-file=./random_messages/random_message_${i} > md5_preimage_28r_randomhash${i}.cnf
-    ./main --cnf --hash-function=md5 --rounds=29 --hash-bits=128 --attack=preimage --message-file=./random_messages/random_message_${i} > md5_preimage_29r_randomhash${i}.cnf
-    ./main --cnf --hash-function=md5 --rounds=30 --hash-bits=128 --attack=preimage --message-file=./random_messages/random_message_${i} > md5_preimage_30r_randomhash${i}.cnf
+    echo "md5, rnd=${rnd}"
+    #./main --cnf --rounds=${rnd} --hash-bits=128 --hash-value=0 --attack=preimage --seed=0 --hash-function=md5 > nossum_md5_preimage_${rnd}r_0hash.cnf
+    #./main --cnf --rounds=${rnd} --hash-bits=128 --hash-value=1 --attack=preimage --seed=0 --hash-function=md5 > nossum_md5_preimage_${rnd}r_1hash.cnf
+    # Generate a template CNF:
+    ./main --cnf --hash-function=md5 --rounds=${rnd} --hash-value=0 --hash-bits=0 --attack=preimage --seed=0 > nossum_md5_preimage_${rnd}r_template.cnf
+    # Generate instances by adding hashes to the template CNF:
+    python3 ./gen_hash_preimage_instances.py ./nossum_md5_preimage_${rnd}r_template.cnf hashes_256bit.txt 128 10 --hashvars=./vars_nossum_md5 --random
 done
+
+rm -r cnfs_nossum_md5_10hashes
+mkdir cnfs_nossum_md5_10hashes
+mv nossum_md5*hashlen*.cnf ./cnfs_nossum_md5_10hashes
+mv nossum_md5*r_0hash.cnf ./cnfs_nossum_md5_10hashes
+mv nossum_md5*r_1hash.cnf ./cnfs_nossum_md5_10hashes
+
+# SHA-1:
+for rnd in {21..25}
+do
+    echo "sha-1, rnd=${rnd}"
+    #./main --cnf --rounds=${rnd} --hash-bits=160 --hash-value=0 --attack=preimage --seed=0 --hash-function=sha1 > nossum_sha1_preimage_${rnd}r_0hash.cnf
+    #./main --cnf --rounds=${rnd} --hash-bits=160 --hash-value=1 --attack=preimage --seed=0 --hash-function=sha1 > nossum_sha1_preimage_${rnd}r_1hash.cnf
+    # Generate a template CNF:
+    ./main --cnf --hash-function=sha1 --rounds=${rnd} --hash-value=0 --hash-bits=0 --attack=preimage --seed=0 > nossum_sha1_preimage_${rnd}r_template.cnf
+    # Generate instances by adding hashes to the template CNF:
+    python3 ./gen_hash_preimage_instances.py ./nossum_sha1_preimage_${rnd}r_template.cnf hashes_256bit.txt 160 10 --hashvars=./vars_nossum_sha1-${rnd}r --random
+done
+
+rm -r cnfs_nossum_sha1_10hashes
+mkdir cnfs_nossum_sha1_10hashes
+mv nossum_sha1*hashlen*.cnf ./cnfs_nossum_sha1_10hashes
+mv nossum_sha1*r_0hash.cnf ./cnfs_nossum_sha1_10hashes
+mv nossum_sha1*r_1hash.cnf ./cnfs_nossum_sha1_10hashes
