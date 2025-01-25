@@ -9,7 +9,7 @@ mv hashes_256bit.txt ..
 cd ..
 ln -s ../EnCnC/scripts/gen_hash_preimage_instances.py .
 
-for rnd in {27..28}
+for rnd in {27..29}
 do
     echo "md5, rnd=${rnd}"
     for i in {1..31}
