@@ -45,10 +45,10 @@ on 27-, 28-, and 29-round MD5 and 21-, 22-, 23-, and 24-round SHA-1, run:
 
 > ./gen_cnfs.sh
 
-To generate CNFs encoding intermediate preimage attacks between
+To generate CNFs which encode intermediate preimage attacks between
 28- and 29-round MD5 and between 23-, and 24-round SHA-1, run:
 
-> ./gen_weakM_cnfs.sh
+> ./gen_weakM_cnfs_1hash.sh
 
 ### Citation
 If you use these sources or/and data, please cite:
