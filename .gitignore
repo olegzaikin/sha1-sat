@@ -5,5 +5,4 @@ verify-preimage
 log_*
 out_*
 /scripts/*.txt
-gen_hash_preimage_instances.py
 hashes_256bit.txt
