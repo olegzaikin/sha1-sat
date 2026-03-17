@@ -29,9 +29,13 @@ Also, intermediate preimage attacks between rounds (or steps) i and i+1 can now 
 /scripts - scripts for generating random hashes, generating CBMC CNFs,
 and for converting solvers' logs to a CSV-file.
 
-### Compiling
+### Install
 
-./make.sh
+The espresso logic minimizer must be installed beforehand.
+E.g. it can be taken from https://github.com/classabbyamp/espresso-log
+When espresso is installed, run
+
+> ./make.sh
 
 ### Running
 
