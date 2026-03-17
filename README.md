@@ -3,20 +3,24 @@ sha1-sat - SAT instance generator for SHA-1, MD5, and MD4
 
 ### About
 
-Sources and benchmarks for the paper
+Sources and benchmarks for the papers
 
 Oleg Zaikin. Inverting Step-Reduced SHA-1 and MD5 by Parameterized SAT Solvers // In CP 2024.
+
+Oleg Zaikin. Preimage attacks on round-reduced MD5, SHA-1, and SHA-256 using parameterized SAT solver // Constraints. Vol. 31. 2026.
 
 The sources are an extension of the repository by Vegard Nossum:
 
 https://github.com/vegard/sha1-sat
 
-In this extension, two new cryptographic hash functions are maintained: MD4 and MD5. 
-Also, intermediate preimage attacks between rounds i and i+1 can now be generated.
+In this extension, two new cryptographic hash functions (in addition to SHA-1) are maintained: MD4 and MD5. 
+Also, intermediate preimage attacks between rounds (or steps) i and i+1 can now be generated.
 
 ### Directories overview
 
 /cnfs_cp - main CNFs used in the CP 2024 experiments.
+
+/cnfs_constraints - main CNFs used in the Constraints 2026 experiments.
 
 /data - halfadder descriptions for the ESPRESSO minimizer.
 
@@ -57,4 +61,15 @@ If you use these sources or/and data, please cite:
   year         = {2024}
 }
 
+```
+or
+
+```
+@article{Zaikin2026-Constraints,
+  author       = {Oleg Zaikin},
+  title        = {Preimage attacks on round-reduced {MD5}, {SHA-1}, and {SHA-256} using parameterized {SAT} solver},
+  journal      = {Constraints},
+  volume       = {31},
+  year         = {2026}
+}
 ```
