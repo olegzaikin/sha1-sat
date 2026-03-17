@@ -53,15 +53,15 @@ on MD5, SHA-0, SHA-1, run:
 
 > ./gen_cnfs_sha1.sh
 
-To generate Constraints-like CNF which encode intermediate preimage attacks on MD5 and SHA-1, run:
+To generate Constraints-like CNFs encoding intermediate preimage attacks on MD5 and SHA-1, run:
 
 > ./gen_weakM_cnfs_10hashes.sh
 
-To generate CP-like CNFs which encode intermediate preimage attacks on MD5, 10 hashes, 1-hash, run:
+To generate CP-like CNFs encoding intermediate preimage attacks on MD5, 10 hashes, 1-hash, run:
 
 > ./gen_weakM_cnfs_old_1hash.sh
 
-To generate Constraints-like CNFs which encode intermediate preimage attacks on MD5, 1-hash, run:
+To generate Constraints-like CNFs encoding intermediate preimage attacks on MD5, 1-hash, run:
 
 > ./gen_weakM_cnfs_1hash.sh
 
