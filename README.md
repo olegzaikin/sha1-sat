@@ -9,11 +9,11 @@ Oleg Zaikin. Inverting Step-Reduced SHA-1 and MD5 by Parameterized SAT Solvers /
 
 Oleg Zaikin. Preimage attacks on round-reduced MD5, SHA-1, and SHA-256 using parameterized SAT solver // Constraints. Vol. 31. 2026.
 
-The sources are an extension of the repository by Vegard Nossum:
+The sources are an extension of the repository by Vegard Nossum that encodes SHA-1 to SAT:
 
 https://github.com/vegard/sha1-sat
 
-In this extension, two new cryptographic hash functions (in addition to SHA-1) are maintained: MD4 and MD5. 
+In this extension, two new cryptographic hash functions are maintained: SHA-0; MD5. 
 Also, intermediate preimage attacks between rounds (or steps) i and i+1 can now be generated.
 
 ### Directories overview
@@ -41,15 +41,23 @@ To generate a CNF encoding a preimage attack on 23 first rounds
 > ./main --cnf --rounds=23 --hash-bits=160 > instance.cnf
 
 To generate CNFs encoding standard (non-intermediate) preimage attacks
-on 27-, 28-, and 29-round MD5 and 21-, 22-, 23-, and 24-round SHA-1, run:
+on MD5, SHA-0, SHA-1, run:
 
-> ./gen_cnfs.sh
+> ./gen_cnfs_md5.sh
 
-To generate CP-like CNFs which encode intermediate preimage attacks on MD5 run:
+> ./gen_cnfs_sha0.sh
+
+> ./gen_cnfs_sha1.sh
+
+To generate Constraints-like CNF which encode intermediate preimage attacks on MD5 and SHA-1, run:
+
+> ./gen_weakM_cnfs_10hashes.sh
+
+To generate CP-like CNFs which encode intermediate preimage attacks on MD5, 10 hashes, 1-hash, run:
 
 > ./gen_weakM_cnfs_old_1hash.sh
 
-To generate Constraints-like CNFs which encode intermediate preimage attacks on MD5 run:
+To generate Constraints-like CNFs which encode intermediate preimage attacks on MD5, 1-hash, run:
 
 > ./gen_weakM_cnfs_1hash.sh
 
