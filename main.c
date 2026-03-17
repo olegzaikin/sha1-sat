@@ -41,7 +41,7 @@ extern "C" {
 
 #include "format.h"
 
-std::string version = "1.1.0";
+std::string version = "1.2.0";
 
 /* Instance options */
 static std::string config_attack = "preimage";
@@ -52,7 +52,7 @@ static unsigned int config_nr_hash_bits = 160;
 static int config_hash_value = -1;
 // How many message bits are unknown on the last step:
 static unsigned int config_equal_toM_bits = 32; // intermediate inverse problem value
-static std::string config_hash_function = "sha1"; // sha1, md4, or md5
+static std::string config_hash_function = "sha1"; // sha0, sha1, md4, or md5
 // Whether the incremental operation is done after the last step (0 or 1):
 static unsigned int is_incremental_step = 1;
 // Whether a compact encoding for intermediate inverse problems is used:
@@ -742,6 +742,188 @@ public:
 
 };
 
+// SHA-0; like SHA-1, but when forming w not shift is done:
+class sha0 {
+public:
+	int w[80][32];
+	int h_in[5][32];
+	int h_out[5][32];
+
+	int a[85][32];
+
+	sha0(unsigned int nr_rounds, std::string name, unsigned equal_toM_bits = 32)
+	{
+		assert(equal_toM_bits >= 0 && equal_toM_bits <= 32);
+
+		comment("sha0");
+		comment(format("parameter nr_rounds = $", nr_rounds));
+
+		for (unsigned int i = 0; i < nr_rounds; ++i)
+			new_vars(format("w$[$]", name, i), w[i], 32, !config_restrict_branching);
+
+		new_vars(format("h$_in0", name), h_in[0], 32);
+		new_vars(format("h$_in1", name), h_in[1], 32);
+		new_vars(format("h$_in2", name), h_in[2], 32);
+		new_vars(format("h$_in3", name), h_in[3], 32);
+		new_vars(format("h$_in4", name), h_in[4], 32);
+
+		new_vars(format("h$_out0", name), h_out[0], 32);
+		new_vars(format("h$_out1", name), h_out[1], 32);
+		new_vars(format("h$_out2", name), h_out[2], 32);
+		new_vars(format("h$_out3", name), h_out[3], 32);
+		new_vars(format("h$_out4", name), h_out[4], 32);
+
+		for (unsigned int i = 0; i < nr_rounds; ++i) {
+			new_vars(format("a[$]", i + 5), a[i + 5], 32);
+		}
+
+		for (unsigned int i = 16; i < nr_rounds; ++i) {
+			xor4(w[i], w[i - 3], w[i - 8], w[i - 14], w[i - 16]);
+		}
+
+		/* Fix constants */
+		int k[4][32];
+		new_constant("k[0]", k[0], 0x5a827999);
+		new_constant("k[1]", k[1], 0x6ed9eba1);
+		new_constant("k[2]", k[2], 0x8f1bbcdc);
+		new_constant("k[3]", k[3], 0xca62c1d6);
+
+		constant32(h_in[0], 0x67452301);
+		constant32(h_in[1], 0xefcdab89);
+		constant32(h_in[2], 0x98badcfe);
+		constant32(h_in[3], 0x10325476);
+		constant32(h_in[4], 0xc3d2e1f0);
+
+		// a[4] == a == h0:
+		rotl(a[4], h_in[0], 32 - 0);
+		// a[3] == b == h1:
+		rotl(a[3], h_in[1], 32 - 0);
+		// a[2] == c << 2 == h2 << 2:
+		rotl(a[2], h_in[2], 32 - 30);
+		// a[1] == d << 2 == h3 << 2:
+		rotl(a[1], h_in[3], 32 - 30);
+		// a[0] == r << 2 == h4 << 2:
+		rotl(a[0], h_in[4], 32 - 30);
+
+		for (unsigned int i = 0; i < nr_rounds; ++i) {
+			// prev_a = a leftrotate 5;
+			// if i == 0, prev_a = a[4] << 5 == a << 5;
+			// if i == 1, prev_a = a[5] << 5 == old-a << 5;
+			int prev_a[32];
+			rotl(prev_a, a[i + 4], 5);
+
+			// b == a[i + 3];
+			// if i == 0, b = a[3] == h1;
+			// if i == 1, b = a[4] == h0 == old-a;
+			int b[32];
+			rotl(b, a[i + 3], 0);
+
+			// c == a[i + 2] << 30;
+			// if i == 0, c = a[2] << 30 == (h2 << 2) << 30 == h2;
+			// if i == 1, c = a[3] << 30 == old-b << 30;
+			int c[32];
+			rotl(c, a[i + 2], 30);
+
+			// d == a[i + 1] << 30;
+			// if i == 0, d = a[1] << 30 == (h3 << 2) << 30 == h3;
+			// if i == 1, d = a[2] << 30 == (h2 << 2) << 30 == h2;
+			int d[32];
+			rotl(d, a[i + 1], 30);
+
+			// e == a[i + 0] << 30;
+			// if i == 0, e = a[0] << 30 == (h4 << 2) << 30 == h4;
+			// if i == 1, e = a[1] << 30 == (h3 << 2) << 30 == h3
+			int e[32];
+			rotl(e, a[i + 0], 30);
+
+			int f[32];
+			new_vars(format("f[$]", i), f, 32);
+
+			if (i >= 0 && i < 20) {
+				for (unsigned int j = 0; j < 32; ++j) {
+					clause(-f[j], -b[j], c[j]);
+					clause(-f[j], b[j], d[j]);
+					clause(-f[j], c[j], d[j]);
+
+					clause(f[j], -b[j], -c[j]);
+					clause(f[j], b[j], -d[j]);
+					clause(f[j], -c[j], -d[j]);
+				}
+			} else if (i >= 20 && i < 40) {
+				xor3(f, b, c, d);
+			} else if (i >= 40 && i < 60) {
+				for (unsigned int j = 0; j < 32; ++j) {
+					clause(-f[j], b[j], c[j]);
+					clause(-f[j], b[j], d[j]);
+					clause(-f[j], c[j], d[j]);
+
+					clause(f[j], -b[j], -c[j]);
+					clause(f[j], -b[j], -d[j]);
+					clause(f[j], -c[j], -d[j]);
+					//clause(f[j], -b[j], -c[j], -d[j]);
+				}
+			} else if (i >= 60 && i < 80) {
+				xor3(f, b, c, d);
+			}
+
+			// Intermediate inversion problem if needed:
+      if ((equal_toM_bits < 32) && (i == nr_rounds - 1)) {
+			    // 2bitM:
+			    // tempW = W[i] << 30;
+    			// weakW = tempW >> 30;
+			    comment(format("$bitW", equal_toM_bits));
+			    int weakW[32];
+			    new_vars("weakW", weakW, 32);
+			    // Leftmost bits are constant 0s:
+			    for (unsigned j = 0; j < 32-equal_toM_bits; j++) {
+						constant(weakW[j], false);
+			    }
+			    // Remaining rightmost bits are equal to message:
+			    for (unsigned j = 32-equal_toM_bits; j < 32; j++) {
+						// Don't introduce new variables, use the remaining:
+						if (config_compact_interm_enc) {
+							weakW[j] = w[i][j];
+						}
+						else {
+							eq(&weakW[j], &w[i][j], 1);
+						}
+			    }
+			    add5(format("a[$]", i + 5), a[i + 5], prev_a, f, e, k[i / 20], weakW);
+			}
+			else {
+			    add5(format("a[$]", i + 5), a[i + 5], prev_a, f, e, k[i / 20], w[i]);
+			}
+		}
+
+		/* Rotate back */
+		int c[32];
+		rotl(c, a[nr_rounds + 2], 30);
+
+		int d[32];
+		rotl(d, a[nr_rounds + 1], 30);
+
+		int e[32];
+		rotl(e, a[nr_rounds + 0], 30);
+
+		if (is_incremental_step) {
+			add2("h_out", h_out[0], h_in[0], a[nr_rounds + 4]);
+			add2("h_out", h_out[1], h_in[1], a[nr_rounds + 3]);
+			add2("h_out", h_out[2], h_in[2], c);
+			add2("h_out", h_out[3], h_in[3], d);
+			add2("h_out", h_out[4], h_in[4], e);
+		}
+		// If incrementing is turned off, output is just a b c d:
+		else {
+			eq(h_out[0], a[nr_rounds + 4], 32);
+			eq(h_out[1], a[nr_rounds + 3], 32);
+			eq(h_out[2], c, 32);
+			eq(h_out[3], d, 32);
+			eq(h_out[4], e, 32);
+		}
+	}
+
+};
+
 static uint32_t rotl(uint32_t x, unsigned int n)
 {
 	return (x << n) | (x >> (32 - n));
@@ -758,6 +940,69 @@ static void sha1_forward(unsigned int nr_rounds, uint32_t w[80],
 
 	for (unsigned int i = 16; i < nr_rounds; ++i)
 		w[i] = rotl(w[i - 3] ^ w[i - 8] ^ w[i - 14] ^ w[i - 16], 1);
+
+	uint32_t a = h0;
+	uint32_t b = h1;
+	uint32_t c = h2;
+	uint32_t d = h3;
+	uint32_t e = h4;
+
+	for (unsigned int i = 0; i < nr_rounds; ++i) {
+		uint32_t f, k;
+
+		if (i >= 0 && i < 20) {
+			f = (b & c) | (~b & d);
+			k = 0x5A827999;
+		} else if (i >= 20 && i < 40) {
+			f = b ^ c ^ d;
+			k = 0x6ED9EBA1;
+		} else if (i >= 40 && i < 60) {
+			f = (b & c) | (b & d) | (c & d);
+			k = 0x8F1BBCDC;
+		} else if (i >= 60 && i < 80) {
+			f = b ^ c ^ d;
+			k = 0xCA62C1D6;
+		}
+
+		//uint32_t t = rotl(a, 5) + f + e + k + w[i];
+		// Intermediate inversion problem:
+		uint32_t tempW = w[i] << equal_toM_bits;
+  	uint32_t weakW = tempW >> equal_toM_bits;
+		uint32_t t = rotl(a, 5) + f + e + k + weakW;
+		e = d;
+		d = c;
+		c = rotl(b, 30);
+		b = a;
+		a = t;
+	}
+
+	if (is_incremental_step) {
+		h_out[0] = h0 + a;
+		h_out[1] = h1 + b;
+		h_out[2] = h2 + c;
+		h_out[3] = h3 + d;
+		h_out[4] = h4 + e;
+	}
+	else {
+		h_out[0] = a;
+		h_out[1] = b;
+		h_out[2] = c;
+		h_out[3] = d;
+		h_out[4] = e;
+	}
+}
+
+static void sha0_forward(unsigned int nr_rounds, uint32_t w[80],
+                         uint32_t h_out[5], unsigned equal_toM_bits = 0)
+{
+	uint32_t h0 = 0x67452301;
+	uint32_t h1 = 0xEFCDAB89;
+	uint32_t h2 = 0x98BADCFE;
+	uint32_t h3 = 0x10325476;
+	uint32_t h4 = 0xC3D2E1F0;
+
+	for (unsigned int i = 16; i < nr_rounds; ++i)
+		w[i] = w[i - 3] ^ w[i - 8] ^ w[i - 14] ^ w[i - 16]; // like in sha-1, but no rotl
 
 	uint32_t a = h0;
 	uint32_t b = h1;
@@ -1591,6 +1836,77 @@ static void preimage_sha1()
 	}
 }
 
+// SHA-0
+static void preimage_sha0()
+{
+	sha0 f(config_nr_rounds, "", config_equal_toM_bits);
+
+	/* Generate a known-valid (message, hash)-pair */
+	uint32_t w[80];
+
+	if (config_message_file == "") {
+		for (unsigned int i = 0; i < 16; ++i)
+			w[i] = lrand48();
+	}
+	else {
+		std::ifstream mes_file(config_message_file);
+		std::string s;
+		unsigned i = 0;
+		comment("Message was read from file " + config_message_file);
+		comment("Message :");
+		while (getline(mes_file, s)) {
+			std::istringstream isstream(s);
+			uint32_t ui;
+			isstream >> ui;
+			w[i] = ui;
+			comment(format("w[$] = $", i, w[i]));
+			i++;
+			//std::cout << ui << std::endl;
+		}
+		assert(i == 16);
+	}
+
+	uint32_t h[5];
+	sha0_forward(config_nr_rounds, w, h, config_equal_toM_bits);
+
+	/* Fix message bits */
+	comment(format("Fix $ message bits", config_nr_message_bits));
+
+	std::vector<unsigned int> message_bits(512);
+	for (unsigned int i = 0; i < 512; ++i)
+		message_bits[i] = i;
+
+	//std::random_shuffle(message_bits.begin(), message_bits.end());
+	for (unsigned int i = 0; i < config_nr_message_bits; ++i) {
+		unsigned int r = message_bits[i] / 32;
+		unsigned int s = message_bits[i] % 32;
+		constant(f.w[r][s], (w[r] >> s) & 1);
+	}
+
+	/* Fix hash bits */
+	comment(format("Fix $ hash bits", config_nr_hash_bits));
+
+	std::vector<unsigned int> hash_bits(160);
+	for (unsigned int i = 0; i < 160; ++i)
+		hash_bits[i] = i;
+
+	//std::random_shuffle(hash_bits.begin(), hash_bits.end());
+	for (unsigned int i = 0; i < config_nr_hash_bits; ++i) {
+		unsigned int r = hash_bits[i] / 32;
+		unsigned int s = hash_bits[i] % 32;
+
+		// If no hash value is give:
+		if (config_hash_value == -1) { 
+			constant(f.h_out[r][s], (h[r] >> s) & 1);
+		}
+		else {
+			// If config_hash_value == 0 (1), all hash bits are 0 (1):
+			assert(config_hash_value == 0 || config_hash_value == 1);
+			constant(f.h_out[r][s], (bool)config_hash_value);
+		}
+	}
+}
+
 /* The second preimage differs from the first preimage by flipping one of
  * the message bits. */
 static void second_preimage_sha1()
@@ -1781,6 +2097,7 @@ int main(int argc, char *argv[])
 		}
 
 		if (config_hash_function != "sha1" && 
+			config_hash_function != "sha0" &&
 		    config_hash_function != "md5" &&
 		    config_hash_function != "md4") {
 			std::cerr << "Invalid --hash-function\n";
@@ -1859,6 +2176,9 @@ int main(int argc, char *argv[])
 	if (config_attack == "preimage") {
 		if (config_hash_function == "sha1") {
 			preimage_sha1();
+		}
+		else if (config_hash_function == "sha0") {
+			preimage_sha0();
 		}
 		else if (config_hash_function == "md5") {
 			preimage_md5();
