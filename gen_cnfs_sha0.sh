@@ -7,7 +7,7 @@ cd ./scripts/
 python3 ./gen_random_hashes.py
 mv hashes_256bit.txt ..
 cd ..
-ln -s ../EnCnC/scripts/gen_hash_preimage_instances.py .
+ln -s ./scripts/gen_hash_preimage_instances.py .
 
 # SHA-0:
 for rnd in {21..25}
