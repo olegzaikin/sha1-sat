@@ -5,16 +5,11 @@ sha1-sat - SAT instance generator for SHA-1, MD5, and MD4
 
 Sources and benchmarks for the papers
 
-Oleg Zaikin. Inverting Step-Reduced SHA-1 and MD5 by Parameterized SAT Solvers // In CP 2024.
+[Oleg Zaikin. Inverting Step-Reduced SHA-1 and MD5 by Parameterized SAT Solvers // In CP 2024](https://drops.dagstuhl.de/entities/document/10.4230/LIPIcs.CP.2024.31)
 
-Oleg Zaikin. Preimage attacks on round-reduced MD5, SHA-1, and SHA-256 using parameterized SAT solver // Constraints. Vol. 31. 2026.
+[Oleg Zaikin. Preimage attacks on round-reduced MD5, SHA-1, and SHA-256 using parameterized SAT solver // Constraints. Vol. 31. 2026](https://link.springer.com/article/10.1007/s10601-025-09383-0)
 
-The sources are an extension of the repository by Vegard Nossum that encodes SHA-1 to SAT:
-
-https://github.com/vegard/sha1-sat
-
-In this extension, two new cryptographic hash functions are maintained: SHA-0; MD5. 
-Also, intermediate preimage attacks between rounds (or steps) i and i+1 can now be generated.
+The sources are an extension of a [repository](https://github.com/vegard/sha1-sat) by Vegard Nossum that encodes SHA-1 to SAT. In this extension, two new cryptographic hash functions, SHA-0 and MD5, are maintained. Also, intermediate preimage attacks between rounds (or steps) i and i+1 can now be generated.
 
 ### Directories overview
 
@@ -31,8 +26,7 @@ and for converting solvers' logs to a CSV-file.
 
 ### Compiling
 
-The espresso logic minimizer must be installed beforehand.
-E.g. it can be taken from https://github.com/classabbyamp/espresso-log
+The espresso logic minimizer must be installed beforehand. E.g. it can be taken from [here](https://github.com/classabbyamp/espresso-logic).
 
 When espresso is installed, run
 > ./make.sh
